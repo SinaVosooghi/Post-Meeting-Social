@@ -1,17 +1,10 @@
 /**
- * MASTER INTERFACES - Post-Meeting Social Media Generator
- * Comprehensive TypeScript definitions aligned with MASTER_ARCHITECTURE.md
+ * Comprehensive TypeScript Type Definitions
+ * Post-Meeting Social Media Content Generator
  * 
- * This file contains ALL interfaces needed for the Jump.ai challenge implementation.
- * Every interface maps directly to components in our production architecture.
- * 
- * ALIGNED WITH: MASTER_ARCHITECTURE.md v2025-09-05
- * TOTAL INTERFACES: 32 comprehensive interfaces
- * COVERAGE: Financial Advisory Domain, AI Content, Social Publishing, Infrastructure
+ * This file defines all interfaces, types, and schemas used throughout the application.
+ * Strict typing ensures type safety and enables advanced IDE features.
  */
-
-// Re-export all interfaces from master-interfaces for backward compatibility
-export * from './master-interfaces';
 
 // ============================================================================
 // CORE DOMAIN TYPES
