@@ -186,6 +186,22 @@ export enum PostStatus {
   FAILED = 'failed'
 }
 
+export enum CalendarProvider {
+  GOOGLE = 'google',
+  OUTLOOK = 'outlook',
+  APPLE = 'apple',
+  OTHER = 'other'
+}
+
+export enum BotStatus {
+  SCHEDULED = 'scheduled',
+  JOINING = 'joining',
+  RECORDING = 'recording',
+  COMPLETED = 'completed',
+  FAILED = 'failed',
+  CANCELLED = 'cancelled'
+}
+
 // ============================================================================
 // CONFIGURATION TYPES
 // ============================================================================
@@ -482,6 +498,123 @@ export interface LoadingState {
   readonly isLoading: boolean;
   readonly error: string | null;
   readonly lastUpdated: Date | null;
+}
+
+// ============================================================================
+// CALENDAR AND BOT INTEGRATION TYPES
+// ============================================================================
+
+/**
+ * Calendar event from external providers (Google, Outlook, etc.)
+ */
+export interface CalendarEvent {
+  readonly id: string;
+  readonly title: string;
+  readonly description: string;
+  readonly startTime: Date;
+  readonly endTime: Date;
+  readonly attendees: CalendarAttendee[];
+  readonly location: string;
+  readonly meetingUrl: string;
+  readonly provider: CalendarProvider;
+  readonly calendarId: string;
+  readonly isRecurring: boolean;
+  readonly status: 'confirmed' | 'tentative' | 'cancelled';
+  readonly visibility: 'default' | 'public' | 'private';
+  readonly createdAt: Date;
+  readonly updatedAt: Date;
+}
+
+/**
+ * Calendar event attendee
+ */
+export interface CalendarAttendee {
+  readonly email: string;
+  readonly name: string;
+  readonly responseStatus: 'needsAction' | 'declined' | 'tentative' | 'accepted';
+  readonly isOrganizer: boolean;
+}
+
+/**
+ * Bot configuration for meeting recording
+ */
+export interface BotConfig {
+  readonly botName: string;
+  readonly recordAudio: boolean;
+  readonly recordVideo: boolean;
+  readonly recordScreen: boolean;
+  readonly transcriptionEnabled: boolean;
+  readonly webhookUrl: string | null;
+}
+
+/**
+ * Meeting bot instance
+ */
+export interface RecallBot {
+  readonly id: string;
+  readonly meetingUrl: string;
+  readonly status: BotStatus;
+  readonly botName: string;
+  readonly scheduledAt: Date;
+  readonly startedAt: Date | null;
+  readonly endedAt: Date | null;
+  readonly recordingUrl: string | null;
+  readonly transcriptUrl: string | null;
+  readonly config: BotConfig;
+  readonly metadata: {
+    readonly meetingPlatform: 'zoom' | 'google-meet' | 'microsoft-teams' | 'webex' | 'other';
+    readonly duration: number | null;
+    readonly participantCount: number | null;
+    readonly transcriptWordCount: number | null;
+  };
+}
+
+/**
+ * Meeting transcript from bot recording
+ */
+export interface MeetingTranscript {
+  readonly botId: string;
+  readonly meetingId: string;
+  readonly content: string;
+  readonly speakers: string[];
+  readonly segments: TranscriptSegment[];
+  readonly summary: string | null;
+  readonly keyPoints: string[];
+  readonly actionItems: string[];
+  readonly duration: number;
+  readonly wordCount: number;
+  readonly language: string;
+  readonly createdAt: Date;
+}
+
+/**
+ * Individual transcript segment with speaker and timing
+ */
+export interface TranscriptSegment {
+  readonly speaker: string;
+  readonly text: string;
+  readonly startTime: number;
+  readonly endTime: number;
+  readonly confidence: number;
+}
+
+/**
+ * Google Calendar specific configuration
+ */
+export interface GoogleCalendarConfig {
+  readonly clientId: string;
+  readonly clientSecret: string;
+  readonly redirectUri: string;
+  readonly scopes: string[];
+}
+
+/**
+ * Recall.ai API response wrapper
+ */
+export interface RecallApiResponse<T> {
+  readonly data: T;
+  readonly status: number;
+  readonly message?: string;
 }
 
 // ============================================================================
