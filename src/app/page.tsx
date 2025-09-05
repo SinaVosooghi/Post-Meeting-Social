@@ -1,103 +1,458 @@
-import Image from "next/image";
+/**
+ * Main Application Page
+ * Post-Meeting Social Media Content Generator
+ *
+ * Phase 1: Core AI functionality demo with hardcoded data
+ */
 
-export default function Home() {
+'use client';
+
+import React, { useState } from 'react';
+import { useSession } from 'next-auth/react';
+import {
+  ContentTone,
+  ContentLength,
+  MeetingPlatform,
+  GeneratePostsRequest,
+  GeneratePostsResponse,
+} from '@/types';
+import { Navigation } from '@/components/navigation';
+
+// ============================================================================
+// MOCK DATA FOR DEMO
+// ============================================================================
+
+const SAMPLE_TRANSCRIPT = `Meeting: Q4 Portfolio Review with Sarah Johnson
+
+Attendees: John Smith (Financial Advisor), Sarah Johnson (Client)
+
+Key Discussion Points:
+- Reviewed portfolio performance over the past quarter
+- Discussed market volatility and its impact on long-term goals
+- Explored opportunities for tax-loss harvesting
+- Addressed concerns about inflation and interest rate changes
+- Reviewed retirement planning timeline and adjusted contributions
+- Discussed diversification strategies across asset classes
+
+Action Items:
+- Rebalance portfolio to target allocation
+- Increase 401k contribution by 2%
+- Schedule next review for February
+- Research ESG investment options
+
+Client expressed satisfaction with current strategy and confidence in long-term approach. Meeting concluded with clear next steps and timeline for implementation.`;
+
+const SAMPLE_MEETING_CONTEXT = {
+  title: 'Q4 Portfolio Review with Sarah Johnson',
+  attendees: ['John Smith (Financial Advisor)', 'Sarah Johnson (Client)'],
+  duration: 45,
+  platform: MeetingPlatform.ZOOM,
+};
+
+const DEFAULT_AUTOMATION_SETTINGS = {
+  maxPosts: 3,
+  includeHashtags: true,
+  includeEmojis: false,
+  tone: ContentTone.PROFESSIONAL,
+  length: ContentLength.MEDIUM,
+  publishImmediately: false,
+  scheduleDelay: 0,
+};
+
+// ============================================================================
+// MAIN COMPONENT
+// ============================================================================
+
+export default function HomePage() {
+  const { data: session } = useSession();
+  const [transcript, setTranscript] = useState(SAMPLE_TRANSCRIPT);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [generatedPosts, setGeneratedPosts] = useState<GeneratePostsResponse | null>(null);
+  const [generatedEmail, setGeneratedEmail] = useState<{
+    subject: string;
+    content: string;
+    actionItems: string[];
+    nextSteps: string;
+  } | null>(null);
+  const [activeTab, setActiveTab] = useState<'posts' | 'email'>('posts');
+  const [error, setError] = useState<string | null>(null);
+
+  // Handle post generation
+  const handleGeneratePosts = async () => {
+    setIsGenerating(true);
+    setError(null);
+
+    try {
+      const request: GeneratePostsRequest = {
+        transcript,
+        meetingContext: SAMPLE_MEETING_CONTEXT,
+        automationSettings: DEFAULT_AUTOMATION_SETTINGS,
+      };
+
+      const response = await fetch('/api/generate-posts', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(request),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const result = await response.json();
+
+      if (result.success) {
+        setGeneratedPosts(result.data);
+      } else {
+        throw new Error(result.error?.message || 'Failed to generate posts');
+      }
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
+      setError(errorMessage);
+      console.error('Error generating posts:', err);
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  // Handle email generation
+  const handleGenerateEmail = async () => {
+    setIsGenerating(true);
+    setError(null);
+
+    try {
+      const response = await fetch('/api/generate-email', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          transcript,
+          attendees: SAMPLE_MEETING_CONTEXT.attendees,
+          meetingTitle: SAMPLE_MEETING_CONTEXT.title,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const result = await response.json();
+
+      if (result.success) {
+        setGeneratedEmail(result.data);
+      } else {
+        throw new Error(result.error?.message || 'Failed to generate email');
+      }
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
+      setError(errorMessage);
+      console.error('Error generating email:', err);
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  // Handle copy to clipboard
+  const handleCopyToClipboard = async (text: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      // You could add a toast notification here
+      console.log('Copied to clipboard');
+    } catch (err) {
+      console.error('Failed to copy to clipboard:', err);
+    }
+  };
+
   return (
-    <div className="font-sans grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="font-mono list-inside list-decimal text-sm/6 text-center sm:text-left">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] font-mono font-semibold px-1 py-0.5 rounded">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
+    <>
+      <Navigation />
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 py-8 px-4">
+        <div className="max-w-6xl mx-auto">
+          {/* Header */}
+          <div className="text-center mb-8">
+            <h1 className="text-4xl font-bold text-gray-900 mb-4">
+              🎯 Post-Meeting Social Content Generator
+            </h1>
+            <p className="text-xl text-gray-600 max-w-3xl mx-auto">
+              Transform your meeting transcripts into engaging social media posts and professional
+              follow-up emails using AI
+            </p>
+            <div className="mt-4 inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800">
+              ✅ Phase 1: Core AI Functionality Demo
+            </div>
+            {session && (
+              <div className="mt-4 text-sm text-gray-600">
+                Welcome back, <strong>{session.user?.name}</strong>! Ready to generate some content?
+              </div>
+            )}
+          </div>
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+          {/* Main Content */}
+          <div className="grid lg:grid-cols-2 gap-8">
+            {/* Input Section */}
+            <div className="bg-white rounded-xl shadow-lg p-6">
+              <h2 className="text-2xl font-semibold text-gray-800 mb-4">📝 Meeting Transcript</h2>
+
+              <div className="mb-4">
+                <label
+                  htmlFor="transcript"
+                  className="block text-sm font-medium text-gray-700 mb-2"
+                >
+                  Paste your meeting transcript below:
+                </label>
+                <textarea
+                  id="transcript"
+                  value={transcript}
+                  onChange={e => setTranscript(e.target.value)}
+                  className="w-full h-64 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                  placeholder="Paste your meeting transcript here..."
+                />
+              </div>
+
+              {/* Meeting Context */}
+              <div className="bg-gray-50 rounded-lg p-4 mb-6">
+                <h3 className="text-sm font-semibold text-gray-700 mb-2">Meeting Context:</h3>
+                <div className="text-sm text-gray-600 space-y-1">
+                  <div>
+                    <strong>Title:</strong> {SAMPLE_MEETING_CONTEXT.title}
+                  </div>
+                  <div>
+                    <strong>Duration:</strong> {SAMPLE_MEETING_CONTEXT.duration} minutes
+                  </div>
+                  <div>
+                    <strong>Platform:</strong> {SAMPLE_MEETING_CONTEXT.platform}
+                  </div>
+                  <div>
+                    <strong>Attendees:</strong> {SAMPLE_MEETING_CONTEXT.attendees.join(', ')}
+                  </div>
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex gap-4">
+                <button
+                  onClick={handleGeneratePosts}
+                  disabled={isGenerating || !transcript.trim()}
+                  className="flex-1 bg-blue-600 text-white px-6 py-3 rounded-lg font-medium hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  {isGenerating && activeTab === 'posts' ? (
+                    <>
+                      <span className="inline-block animate-spin mr-2">⏳</span>
+                      Generating Posts...
+                    </>
+                  ) : (
+                    '🚀 Generate Social Posts'
+                  )}
+                </button>
+
+                <button
+                  onClick={handleGenerateEmail}
+                  disabled={isGenerating || !transcript.trim()}
+                  className="flex-1 bg-green-600 text-white px-6 py-3 rounded-lg font-medium hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  {isGenerating && activeTab === 'email' ? (
+                    <>
+                      <span className="inline-block animate-spin mr-2">⏳</span>
+                      Generating Email...
+                    </>
+                  ) : (
+                    '📧 Generate Follow-up Email'
+                  )}
+                </button>
+              </div>
+            </div>
+
+            {/* Output Section */}
+            <div className="bg-white rounded-xl shadow-lg p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-2xl font-semibold text-gray-800">🎨 Generated Content</h2>
+
+                {/* Tab Buttons */}
+                <div className="flex rounded-lg bg-gray-100 p-1">
+                  <button
+                    onClick={() => setActiveTab('posts')}
+                    className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
+                      activeTab === 'posts'
+                        ? 'bg-white text-blue-600 shadow-sm'
+                        : 'text-gray-500 hover:text-gray-700'
+                    }`}
+                  >
+                    Social Posts
+                  </button>
+                  <button
+                    onClick={() => setActiveTab('email')}
+                    className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
+                      activeTab === 'email'
+                        ? 'bg-white text-green-600 shadow-sm'
+                        : 'text-gray-500 hover:text-gray-700'
+                    }`}
+                  >
+                    Follow-up Email
+                  </button>
+                </div>
+              </div>
+
+              {/* Error Display */}
+              {error && (
+                <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
+                  <div className="flex items-center">
+                    <span className="text-red-600 mr-2">❌</span>
+                    <span className="text-red-700 font-medium">Error:</span>
+                  </div>
+                  <p className="text-red-600 mt-1">{error}</p>
+                </div>
+              )}
+
+              {/* Social Posts Tab */}
+              {activeTab === 'posts' && (
+                <div className="space-y-4">
+                  {generatedPosts ? (
+                    <>
+                      <div className="text-sm text-gray-500 mb-4">
+                        Generated {generatedPosts.posts.length} posts in{' '}
+                        {generatedPosts.metadata.processingTimeMs}ms
+                        {generatedPosts.metadata.model.includes('mock') && (
+                          <span className="ml-2 px-2 py-1 bg-yellow-100 text-yellow-800 rounded text-xs">
+                            Using Mock Data
+                          </span>
+                        )}
+                      </div>
+
+                      {generatedPosts.posts.map((post, index) => (
+                        <div key={index} className="border border-gray-200 rounded-lg p-4">
+                          <div className="flex items-center justify-between mb-2">
+                            <div className="flex items-center space-x-2">
+                              <span className="text-sm font-medium text-gray-700">
+                                {post.platform}
+                              </span>
+                              <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded">
+                                Post {index + 1}
+                              </span>
+                            </div>
+                            <button
+                              onClick={() => handleCopyToClipboard(post.content)}
+                              className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+                            >
+                              📋 Copy
+                            </button>
+                          </div>
+
+                          <p className="text-gray-800 mb-3 leading-relaxed">{post.content}</p>
+
+                          {post.hashtags && post.hashtags.length > 0 && (
+                            <div className="flex flex-wrap gap-1 mb-2">
+                              {post.hashtags.map((hashtag, idx) => (
+                                <span
+                                  key={idx}
+                                  className="px-2 py-1 bg-gray-100 text-gray-600 text-xs rounded"
+                                >
+                                  #{hashtag.replace('#', '')}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+
+                          {post.reasoning && (
+                            <div className="text-xs text-gray-500 italic border-t pt-2 mt-2">
+                              <strong>AI Reasoning:</strong> {post.reasoning}
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </>
+                  ) : (
+                    <div className="text-center py-12 text-gray-500">
+                      <div className="text-4xl mb-4">📱</div>
+                      <p>Click &quot;Generate Social Posts&quot; to see AI-generated content</p>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Email Tab */}
+              {activeTab === 'email' && (
+                <div>
+                  {generatedEmail ? (
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm text-gray-500">Generated follow-up email</span>
+                        <button
+                          onClick={() =>
+                            handleCopyToClipboard(
+                              `Subject: ${generatedEmail.subject}\n\n${generatedEmail.content}`
+                            )
+                          }
+                          className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+                        >
+                          📋 Copy Email
+                        </button>
+                      </div>
+
+                      <div className="border border-gray-200 rounded-lg p-4">
+                        <div className="mb-4">
+                          <label className="text-sm font-medium text-gray-700">Subject:</label>
+                          <p className="text-gray-800 font-medium">{generatedEmail.subject}</p>
+                        </div>
+
+                        <div className="mb-4">
+                          <label className="text-sm font-medium text-gray-700 mb-2 block">
+                            Content:
+                          </label>
+                          <div className="bg-gray-50 rounded p-3 text-gray-800 whitespace-pre-wrap">
+                            {generatedEmail.content}
+                          </div>
+                        </div>
+
+                        {generatedEmail.actionItems && generatedEmail.actionItems.length > 0 && (
+                          <div className="mb-4">
+                            <label className="text-sm font-medium text-gray-700 mb-2 block">
+                              Action Items:
+                            </label>
+                            <ul className="list-disc list-inside space-y-1">
+                              {generatedEmail.actionItems.map((item: string, index: number) => (
+                                <li key={index} className="text-gray-700 text-sm">
+                                  {item}
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+
+                        {generatedEmail.nextSteps && (
+                          <div>
+                            <label className="text-sm font-medium text-gray-700 mb-2 block">
+                              Next Steps:
+                            </label>
+                            <p className="text-gray-700 text-sm">{generatedEmail.nextSteps}</p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="text-center py-12 text-gray-500">
+                      <div className="text-4xl mb-4">📧</div>
+                      <p>Click &quot;Generate Follow-up Email&quot; to see AI-generated content</p>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Footer */}
+          <div className="text-center mt-12 text-gray-500">
+            <p className="text-sm">
+              Built with ❤️ for Jump.ai Challenge • Phase 1: Core AI Functionality Demo
+            </p>
+            <p className="text-xs mt-1">
+              Next: Google Calendar Integration, Recall.ai Bot Management, Social Media Publishing
+            </p>
+          </div>
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
-    </div>
+      </div>
+    </>
   );
 }

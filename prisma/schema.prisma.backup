@@ -1,6 +1,5 @@
-// Enhanced Prisma Schema - Post-Meeting Social Media Content Generator
-// Aligned with MASTER_ARCHITECTURE.md and comprehensive interfaces
-// This schema supports the complete Jump.ai challenge requirements
+// Prisma Schema for Post-Meeting Social Media Content Generator
+// This schema defines all database models with strict TypeScript integration
 
 generator client {
   provider = "prisma-client-js"
@@ -24,15 +23,11 @@ model User {
   updatedAt DateTime @updatedAt
 
   // Relations
-  accounts           Account[]
-  sessions           Session[]
-  meetings           Meeting[]
-  automations        Automation[]
-  settings           UserSettings?
-  financialAdvisor   FinancialAdvisor?
-  socialTokens       SocialMediaToken[]
-  calendarIntegrations CalendarIntegration[]
-  systemAlerts       SystemAlert[]
+  accounts    Account[]
+  sessions    Session[]
+  meetings    Meeting[]
+  automations Automation[]
+  settings    UserSettings?
 
   @@map("users")
 }
@@ -192,127 +187,6 @@ model UserSettings {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("user_settings")
-}
-
-// ============================================================================
-// FINANCIAL ADVISORY DOMAIN ENTITIES (Enhanced for Jump.ai)
-// ============================================================================
-
-model FinancialAdvisor {
-  id     String @id @default(cuid())
-  userId String @unique
-
-  // Basic information
-  firmName       String
-  licenseNumbers Json // { series7, series66, stateRegistrations[], crd }
-  
-  // Compliance settings
-  complianceSettings Json // { riskTolerance, requiredDisclosures[], approvedHashtags[], etc. }
-  
-  // Regulatory requirements
-  regulatoryRequirements Json // { finraRegistered, secRegistered, stateRequirements[], etc. }
-  
-  // Firm settings
-  firmSettings Json // { firmType, aum, clientCount, complianceFramework }
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  // Relations
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@map("financial_advisors")
-}
-
-model SocialMediaToken {
-  id       String @id @default(cuid())
-  userId   String
-  platform String // SocialPlatform enum
-  tokenType String // 'access' | 'refresh' | 'page_access'
-
-  // Token details (encrypted at rest)
-  encryptedToken    String
-  tokenScope        Json    // Array of scope strings
-  expiresAt         DateTime
-  refreshToken      String?
-  refreshExpiresAt  DateTime?
-
-  // Platform-specific details
-  platformDetails Json // { userId, username, pageId, etc. }
-
-  // Token health monitoring
-  healthStatus   String   // 'healthy' | 'expiring_soon' | etc.
-  lastValidated  DateTime
-  lastRefreshed  DateTime?
-  refreshCount   Int      @default(0)
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  // Relations
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@unique([userId, platform, tokenType])
-  @@index([platform, healthStatus])
-  @@map("social_media_tokens")
-}
-
-model CalendarIntegration {
-  id           String    @id @default(cuid())
-  userId       String
-  provider     String    // CalendarProvider enum
-  calendarId   String
-  
-  // OAuth token management
-  accessToken   String    // Encrypted
-  refreshToken  String?   // Encrypted
-  expiresAt     DateTime
-  tokenScope    Json      // Array of scope strings
-  
-  // Integration settings
-  isActive      Boolean   @default(true)
-  syncEnabled   Boolean   @default(true)
-  lastSyncAt    DateTime?
-  syncErrors    Json?     // Array of sync error objects
-  
-  // Calendar metadata
-  calendarName  String?
-  calendarColor String?
-  timeZone      String    @default("UTC")
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  // Relations
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@unique([userId, provider, calendarId])
-  @@map("calendar_integrations")
-}
-
-model SystemAlert {
-  id           String    @id @default(cuid())
-  severity     String    // 'info' | 'warning' | 'error' | 'critical'
-  category     String    // 'performance' | 'security' | 'compliance' | etc.
-  message      String
-  details      String
-  service      String?
-  userId       String?
-  
-  // Alert management
-  acknowledged   Boolean   @default(false)
-  acknowledgedBy String?
-  acknowledgedAt DateTime?
-  resolvedAt     DateTime?
-
-  createdAt DateTime @default(now())
-
-  // Relations
-  user User? @relation(fields: [userId], references: [id])
-
-  @@index([severity, acknowledged])
-  @@index([category, createdAt])
-  @@map("system_alerts")
 }
 
 // ============================================================================
