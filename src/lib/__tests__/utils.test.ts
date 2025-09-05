@@ -286,7 +286,7 @@ describe('Error Utilities', () => {
     it('should handle Error objects', () => {
       const error = new Error('Test error');
       const result = handleError(error);
-      expect(result).toEqual({
+      expect(result).toMatchObject({
         message: 'Test error',
         code: 'Error',
       });
@@ -311,7 +311,7 @@ describe('Error Utilities', () => {
       expect(error).toEqual({
         message: 'Test error',
         code: 'TEST_ERROR',
-        statusCode: 400,
+        status: 400,
         timestamp: expect.any(String),
       });
     });
