@@ -8,6 +8,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import { useSession } from 'next-auth/react';
 import {
   ContentTone,
   ContentLength,
@@ -15,6 +16,7 @@ import {
   GeneratePostsRequest,
   GeneratePostsResponse,
 } from '@/types';
+import { Navigation } from '@/components/navigation';
 
 // ============================================================================
 // MOCK DATA FOR DEMO
@@ -62,6 +64,7 @@ const DEFAULT_AUTOMATION_SETTINGS = {
 // ============================================================================
 
 export default function HomePage() {
+  const { data: session } = useSession();
   const [transcript, setTranscript] = useState(SAMPLE_TRANSCRIPT);
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedPosts, setGeneratedPosts] = useState<GeneratePostsResponse | null>(null);
@@ -164,281 +167,292 @@ export default function HomePage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 py-8 px-4">
-      <div className="max-w-6xl mx-auto">
-        {/* Header */}
-        <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold text-gray-900 mb-4">
-            🎯 Post-Meeting Social Content Generator
-          </h1>
-          <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-            Transform your meeting transcripts into engaging social media posts and professional
-            follow-up emails using AI
-          </p>
-          <div className="mt-4 inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800">
-            ✅ Phase 1: Core AI Functionality Demo
-          </div>
-        </div>
-
-        {/* Main Content */}
-        <div className="grid lg:grid-cols-2 gap-8">
-          {/* Input Section */}
-          <div className="bg-white rounded-xl shadow-lg p-6">
-            <h2 className="text-2xl font-semibold text-gray-800 mb-4">📝 Meeting Transcript</h2>
-
-            <div className="mb-4">
-              <label htmlFor="transcript" className="block text-sm font-medium text-gray-700 mb-2">
-                Paste your meeting transcript below:
-              </label>
-              <textarea
-                id="transcript"
-                value={transcript}
-                onChange={e => setTranscript(e.target.value)}
-                className="w-full h-64 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
-                placeholder="Paste your meeting transcript here..."
-              />
+    <>
+      <Navigation />
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 py-8 px-4">
+        <div className="max-w-6xl mx-auto">
+          {/* Header */}
+          <div className="text-center mb-8">
+            <h1 className="text-4xl font-bold text-gray-900 mb-4">
+              🎯 Post-Meeting Social Content Generator
+            </h1>
+            <p className="text-xl text-gray-600 max-w-3xl mx-auto">
+              Transform your meeting transcripts into engaging social media posts and professional
+              follow-up emails using AI
+            </p>
+            <div className="mt-4 inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800">
+              ✅ Phase 1: Core AI Functionality Demo
             </div>
-
-            {/* Meeting Context */}
-            <div className="bg-gray-50 rounded-lg p-4 mb-6">
-              <h3 className="text-sm font-semibold text-gray-700 mb-2">Meeting Context:</h3>
-              <div className="text-sm text-gray-600 space-y-1">
-                <div>
-                  <strong>Title:</strong> {SAMPLE_MEETING_CONTEXT.title}
-                </div>
-                <div>
-                  <strong>Duration:</strong> {SAMPLE_MEETING_CONTEXT.duration} minutes
-                </div>
-                <div>
-                  <strong>Platform:</strong> {SAMPLE_MEETING_CONTEXT.platform}
-                </div>
-                <div>
-                  <strong>Attendees:</strong> {SAMPLE_MEETING_CONTEXT.attendees.join(', ')}
-                </div>
-              </div>
-            </div>
-
-            {/* Action Buttons */}
-            <div className="flex gap-4">
-              <button
-                onClick={handleGeneratePosts}
-                disabled={isGenerating || !transcript.trim()}
-                className="flex-1 bg-blue-600 text-white px-6 py-3 rounded-lg font-medium hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-              >
-                {isGenerating && activeTab === 'posts' ? (
-                  <>
-                    <span className="inline-block animate-spin mr-2">⏳</span>
-                    Generating Posts...
-                  </>
-                ) : (
-                  '🚀 Generate Social Posts'
-                )}
-              </button>
-
-              <button
-                onClick={handleGenerateEmail}
-                disabled={isGenerating || !transcript.trim()}
-                className="flex-1 bg-green-600 text-white px-6 py-3 rounded-lg font-medium hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-              >
-                {isGenerating && activeTab === 'email' ? (
-                  <>
-                    <span className="inline-block animate-spin mr-2">⏳</span>
-                    Generating Email...
-                  </>
-                ) : (
-                  '📧 Generate Follow-up Email'
-                )}
-              </button>
-            </div>
-          </div>
-
-          {/* Output Section */}
-          <div className="bg-white rounded-xl shadow-lg p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-2xl font-semibold text-gray-800">🎨 Generated Content</h2>
-
-              {/* Tab Buttons */}
-              <div className="flex rounded-lg bg-gray-100 p-1">
-                <button
-                  onClick={() => setActiveTab('posts')}
-                  className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
-                    activeTab === 'posts'
-                      ? 'bg-white text-blue-600 shadow-sm'
-                      : 'text-gray-500 hover:text-gray-700'
-                  }`}
-                >
-                  Social Posts
-                </button>
-                <button
-                  onClick={() => setActiveTab('email')}
-                  className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
-                    activeTab === 'email'
-                      ? 'bg-white text-green-600 shadow-sm'
-                      : 'text-gray-500 hover:text-gray-700'
-                  }`}
-                >
-                  Follow-up Email
-                </button>
-              </div>
-            </div>
-
-            {/* Error Display */}
-            {error && (
-              <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
-                <div className="flex items-center">
-                  <span className="text-red-600 mr-2">❌</span>
-                  <span className="text-red-700 font-medium">Error:</span>
-                </div>
-                <p className="text-red-600 mt-1">{error}</p>
+            {session && (
+              <div className="mt-4 text-sm text-gray-600">
+                Welcome back, <strong>{session.user?.name}</strong>! Ready to generate some content?
               </div>
             )}
+          </div>
 
-            {/* Social Posts Tab */}
-            {activeTab === 'posts' && (
-              <div className="space-y-4">
-                {generatedPosts ? (
-                  <>
-                    <div className="text-sm text-gray-500 mb-4">
-                      Generated {generatedPosts.posts.length} posts in{' '}
-                      {generatedPosts.metadata.processingTimeMs}ms
-                      {generatedPosts.metadata.model.includes('mock') && (
-                        <span className="ml-2 px-2 py-1 bg-yellow-100 text-yellow-800 rounded text-xs">
-                          Using Mock Data
-                        </span>
-                      )}
-                    </div>
+          {/* Main Content */}
+          <div className="grid lg:grid-cols-2 gap-8">
+            {/* Input Section */}
+            <div className="bg-white rounded-xl shadow-lg p-6">
+              <h2 className="text-2xl font-semibold text-gray-800 mb-4">📝 Meeting Transcript</h2>
 
-                    {generatedPosts.posts.map((post, index) => (
-                      <div key={index} className="border border-gray-200 rounded-lg p-4">
-                        <div className="flex items-center justify-between mb-2">
-                          <div className="flex items-center space-x-2">
-                            <span className="text-sm font-medium text-gray-700">
-                              {post.platform}
-                            </span>
-                            <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded">
-                              Post {index + 1}
-                            </span>
-                          </div>
-                          <button
-                            onClick={() => handleCopyToClipboard(post.content)}
-                            className="text-sm text-blue-600 hover:text-blue-700 font-medium"
-                          >
-                            📋 Copy
-                          </button>
-                        </div>
+              <div className="mb-4">
+                <label
+                  htmlFor="transcript"
+                  className="block text-sm font-medium text-gray-700 mb-2"
+                >
+                  Paste your meeting transcript below:
+                </label>
+                <textarea
+                  id="transcript"
+                  value={transcript}
+                  onChange={e => setTranscript(e.target.value)}
+                  className="w-full h-64 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                  placeholder="Paste your meeting transcript here..."
+                />
+              </div>
 
-                        <p className="text-gray-800 mb-3 leading-relaxed">{post.content}</p>
-
-                        {post.hashtags && post.hashtags.length > 0 && (
-                          <div className="flex flex-wrap gap-1 mb-2">
-                            {post.hashtags.map((hashtag, idx) => (
-                              <span
-                                key={idx}
-                                className="px-2 py-1 bg-gray-100 text-gray-600 text-xs rounded"
-                              >
-                                #{hashtag.replace('#', '')}
-                              </span>
-                            ))}
-                          </div>
-                        )}
-
-                        {post.reasoning && (
-                          <div className="text-xs text-gray-500 italic border-t pt-2 mt-2">
-                            <strong>AI Reasoning:</strong> {post.reasoning}
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                  </>
-                ) : (
-                  <div className="text-center py-12 text-gray-500">
-                    <div className="text-4xl mb-4">📱</div>
-                    <p>Click &quot;Generate Social Posts&quot; to see AI-generated content</p>
+              {/* Meeting Context */}
+              <div className="bg-gray-50 rounded-lg p-4 mb-6">
+                <h3 className="text-sm font-semibold text-gray-700 mb-2">Meeting Context:</h3>
+                <div className="text-sm text-gray-600 space-y-1">
+                  <div>
+                    <strong>Title:</strong> {SAMPLE_MEETING_CONTEXT.title}
                   </div>
-                )}
+                  <div>
+                    <strong>Duration:</strong> {SAMPLE_MEETING_CONTEXT.duration} minutes
+                  </div>
+                  <div>
+                    <strong>Platform:</strong> {SAMPLE_MEETING_CONTEXT.platform}
+                  </div>
+                  <div>
+                    <strong>Attendees:</strong> {SAMPLE_MEETING_CONTEXT.attendees.join(', ')}
+                  </div>
+                </div>
               </div>
-            )}
 
-            {/* Email Tab */}
-            {activeTab === 'email' && (
-              <div>
-                {generatedEmail ? (
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-gray-500">Generated follow-up email</span>
-                      <button
-                        onClick={() =>
-                          handleCopyToClipboard(
-                            `Subject: ${generatedEmail.subject}\n\n${generatedEmail.content}`
-                          )
-                        }
-                        className="text-sm text-blue-600 hover:text-blue-700 font-medium"
-                      >
-                        📋 Copy Email
-                      </button>
-                    </div>
+              {/* Action Buttons */}
+              <div className="flex gap-4">
+                <button
+                  onClick={handleGeneratePosts}
+                  disabled={isGenerating || !transcript.trim()}
+                  className="flex-1 bg-blue-600 text-white px-6 py-3 rounded-lg font-medium hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  {isGenerating && activeTab === 'posts' ? (
+                    <>
+                      <span className="inline-block animate-spin mr-2">⏳</span>
+                      Generating Posts...
+                    </>
+                  ) : (
+                    '🚀 Generate Social Posts'
+                  )}
+                </button>
 
-                    <div className="border border-gray-200 rounded-lg p-4">
-                      <div className="mb-4">
-                        <label className="text-sm font-medium text-gray-700">Subject:</label>
-                        <p className="text-gray-800 font-medium">{generatedEmail.subject}</p>
+                <button
+                  onClick={handleGenerateEmail}
+                  disabled={isGenerating || !transcript.trim()}
+                  className="flex-1 bg-green-600 text-white px-6 py-3 rounded-lg font-medium hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  {isGenerating && activeTab === 'email' ? (
+                    <>
+                      <span className="inline-block animate-spin mr-2">⏳</span>
+                      Generating Email...
+                    </>
+                  ) : (
+                    '📧 Generate Follow-up Email'
+                  )}
+                </button>
+              </div>
+            </div>
+
+            {/* Output Section */}
+            <div className="bg-white rounded-xl shadow-lg p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-2xl font-semibold text-gray-800">🎨 Generated Content</h2>
+
+                {/* Tab Buttons */}
+                <div className="flex rounded-lg bg-gray-100 p-1">
+                  <button
+                    onClick={() => setActiveTab('posts')}
+                    className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
+                      activeTab === 'posts'
+                        ? 'bg-white text-blue-600 shadow-sm'
+                        : 'text-gray-500 hover:text-gray-700'
+                    }`}
+                  >
+                    Social Posts
+                  </button>
+                  <button
+                    onClick={() => setActiveTab('email')}
+                    className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
+                      activeTab === 'email'
+                        ? 'bg-white text-green-600 shadow-sm'
+                        : 'text-gray-500 hover:text-gray-700'
+                    }`}
+                  >
+                    Follow-up Email
+                  </button>
+                </div>
+              </div>
+
+              {/* Error Display */}
+              {error && (
+                <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
+                  <div className="flex items-center">
+                    <span className="text-red-600 mr-2">❌</span>
+                    <span className="text-red-700 font-medium">Error:</span>
+                  </div>
+                  <p className="text-red-600 mt-1">{error}</p>
+                </div>
+              )}
+
+              {/* Social Posts Tab */}
+              {activeTab === 'posts' && (
+                <div className="space-y-4">
+                  {generatedPosts ? (
+                    <>
+                      <div className="text-sm text-gray-500 mb-4">
+                        Generated {generatedPosts.posts.length} posts in{' '}
+                        {generatedPosts.metadata.processingTimeMs}ms
+                        {generatedPosts.metadata.model.includes('mock') && (
+                          <span className="ml-2 px-2 py-1 bg-yellow-100 text-yellow-800 rounded text-xs">
+                            Using Mock Data
+                          </span>
+                        )}
                       </div>
 
-                      <div className="mb-4">
-                        <label className="text-sm font-medium text-gray-700 mb-2 block">
-                          Content:
-                        </label>
-                        <div className="bg-gray-50 rounded p-3 text-gray-800 whitespace-pre-wrap">
-                          {generatedEmail.content}
+                      {generatedPosts.posts.map((post, index) => (
+                        <div key={index} className="border border-gray-200 rounded-lg p-4">
+                          <div className="flex items-center justify-between mb-2">
+                            <div className="flex items-center space-x-2">
+                              <span className="text-sm font-medium text-gray-700">
+                                {post.platform}
+                              </span>
+                              <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded">
+                                Post {index + 1}
+                              </span>
+                            </div>
+                            <button
+                              onClick={() => handleCopyToClipboard(post.content)}
+                              className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+                            >
+                              📋 Copy
+                            </button>
+                          </div>
+
+                          <p className="text-gray-800 mb-3 leading-relaxed">{post.content}</p>
+
+                          {post.hashtags && post.hashtags.length > 0 && (
+                            <div className="flex flex-wrap gap-1 mb-2">
+                              {post.hashtags.map((hashtag, idx) => (
+                                <span
+                                  key={idx}
+                                  className="px-2 py-1 bg-gray-100 text-gray-600 text-xs rounded"
+                                >
+                                  #{hashtag.replace('#', '')}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+
+                          {post.reasoning && (
+                            <div className="text-xs text-gray-500 italic border-t pt-2 mt-2">
+                              <strong>AI Reasoning:</strong> {post.reasoning}
+                            </div>
+                          )}
                         </div>
+                      ))}
+                    </>
+                  ) : (
+                    <div className="text-center py-12 text-gray-500">
+                      <div className="text-4xl mb-4">📱</div>
+                      <p>Click &quot;Generate Social Posts&quot; to see AI-generated content</p>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Email Tab */}
+              {activeTab === 'email' && (
+                <div>
+                  {generatedEmail ? (
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm text-gray-500">Generated follow-up email</span>
+                        <button
+                          onClick={() =>
+                            handleCopyToClipboard(
+                              `Subject: ${generatedEmail.subject}\n\n${generatedEmail.content}`
+                            )
+                          }
+                          className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+                        >
+                          📋 Copy Email
+                        </button>
                       </div>
 
-                      {generatedEmail.actionItems && generatedEmail.actionItems.length > 0 && (
+                      <div className="border border-gray-200 rounded-lg p-4">
+                        <div className="mb-4">
+                          <label className="text-sm font-medium text-gray-700">Subject:</label>
+                          <p className="text-gray-800 font-medium">{generatedEmail.subject}</p>
+                        </div>
+
                         <div className="mb-4">
                           <label className="text-sm font-medium text-gray-700 mb-2 block">
-                            Action Items:
+                            Content:
                           </label>
-                          <ul className="list-disc list-inside space-y-1">
-                            {generatedEmail.actionItems.map((item: string, index: number) => (
-                              <li key={index} className="text-gray-700 text-sm">
-                                {item}
-                              </li>
-                            ))}
-                          </ul>
+                          <div className="bg-gray-50 rounded p-3 text-gray-800 whitespace-pre-wrap">
+                            {generatedEmail.content}
+                          </div>
                         </div>
-                      )}
 
-                      {generatedEmail.nextSteps && (
-                        <div>
-                          <label className="text-sm font-medium text-gray-700 mb-2 block">
-                            Next Steps:
-                          </label>
-                          <p className="text-gray-700 text-sm">{generatedEmail.nextSteps}</p>
-                        </div>
-                      )}
+                        {generatedEmail.actionItems && generatedEmail.actionItems.length > 0 && (
+                          <div className="mb-4">
+                            <label className="text-sm font-medium text-gray-700 mb-2 block">
+                              Action Items:
+                            </label>
+                            <ul className="list-disc list-inside space-y-1">
+                              {generatedEmail.actionItems.map((item: string, index: number) => (
+                                <li key={index} className="text-gray-700 text-sm">
+                                  {item}
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+
+                        {generatedEmail.nextSteps && (
+                          <div>
+                            <label className="text-sm font-medium text-gray-700 mb-2 block">
+                              Next Steps:
+                            </label>
+                            <p className="text-gray-700 text-sm">{generatedEmail.nextSteps}</p>
+                          </div>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                ) : (
-                  <div className="text-center py-12 text-gray-500">
-                    <div className="text-4xl mb-4">📧</div>
-                    <p>Click &quot;Generate Follow-up Email&quot; to see AI-generated content</p>
-                  </div>
-                )}
-              </div>
-            )}
+                  ) : (
+                    <div className="text-center py-12 text-gray-500">
+                      <div className="text-4xl mb-4">📧</div>
+                      <p>Click &quot;Generate Follow-up Email&quot; to see AI-generated content</p>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Footer */}
+          <div className="text-center mt-12 text-gray-500">
+            <p className="text-sm">
+              Built with ❤️ for Jump.ai Challenge • Phase 1: Core AI Functionality Demo
+            </p>
+            <p className="text-xs mt-1">
+              Next: Google Calendar Integration, Recall.ai Bot Management, Social Media Publishing
+            </p>
           </div>
         </div>
-
-        {/* Footer */}
-        <div className="text-center mt-12 text-gray-500">
-          <p className="text-sm">
-            Built with ❤️ for Jump.ai Challenge • Phase 1: Core AI Functionality Demo
-          </p>
-          <p className="text-xs mt-1">
-            Next: Google Calendar Integration, Recall.ai Bot Management, Social Media Publishing
-          </p>
-        </div>
       </div>
-    </div>
+    </>
   );
 }
