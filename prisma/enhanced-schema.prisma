@@ -1,0 +1,694 @@
+// Enhanced Prisma Schema - Post-Meeting Social Media Content Generator
+// Aligned with MASTER_ARCHITECTURE.md and comprehensive interfaces
+// This schema supports the complete Jump.ai challenge requirements
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================================================
+// USER MANAGEMENT & AUTHENTICATION
+// ============================================================================
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String?
+  image     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  accounts           Account[]
+  sessions           Session[]
+  financialAdvisor   FinancialAdvisor?
+  meetings           ClientMeeting[]
+  automations        AutomationConfiguration[]
+  settings           UserSettings?
+  socialTokens       SocialMediaToken[]
+  generatedContent   GeneratedContent[]
+  complianceReviews  ComplianceValidation[]
+  jobs               JobDefinition[]
+
+  @@map("users")
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@map("accounts")
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+// ============================================================================
+// FINANCIAL ADVISORY DOMAIN ENTITIES
+// ============================================================================
+
+model FinancialAdvisor {
+  id     String @id @default(cuid())
+  userId String @unique
+
+  // Basic information
+  firmName       String
+  licenseNumbers Json // { series7, series66, stateRegistrations[], crd }
+  
+  // Compliance settings
+  complianceSettings Json // { riskTolerance, requiredDisclosures[], approvedHashtags[], etc. }
+  
+  // Regulatory requirements
+  regulatoryRequirements Json // { finraRegistered, secRegistered, stateRequirements[], etc. }
+  
+  // Firm settings
+  firmSettings Json // { firmType, aum, clientCount, complianceFramework }
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  user                 User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  meetings             ClientMeeting[]
+  complianceReviews    ComplianceValidation[]
+  generatedContent     GeneratedContent[]
+  automations          AutomationConfiguration[]
+
+  @@map("financial_advisors")
+}
+
+model ClientMeeting {
+  id               String   @id @default(cuid())
+  advisorId        String
+  calendarEventId  String   @unique
+  title            String
+  description      String?
+  startTime        DateTime
+  endTime          DateTime
+  meetingUrl       String
+  platform         String   // MeetingPlatform enum
+
+  // Client relationship context (JSON for flexibility)
+  clientRelationship Json // { clientId, relationshipType, riskProfile, etc. }
+  
+  // Compliance flags
+  complianceFlags Json // { containsSensitiveData, requiresLegalReview, etc. }
+  
+  // Recording details
+  recordingDetails Json // { botId, recordingStatus, transcriptStatus, etc. }
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  advisor              FinancialAdvisor       @relation(fields: [advisorId], references: [id], onDelete: Cascade)
+  user                 User                   @relation(fields: [advisorId], references: [userId])
+  recallBot            RecallBot?
+  transcript           MeetingTranscript?
+  generatedContent     GeneratedContent[]
+  complianceValidations ComplianceValidation[]
+
+  @@map("client_meetings")
+}
+
+// ============================================================================
+// MEETING RECORDING & TRANSCRIPTION
+// ============================================================================
+
+model RecallBot {
+  id             String   @id @default(cuid())
+  externalBotId  String   @unique // Recall.ai bot ID
+  meetingId      String   @unique
+  meetingUrl     String
+  status         String   // BotStatus enum
+  
+  // Bot configuration (JSON for flexibility)
+  config Json // { botName, recordAudio, recordVideo, etc. }
+  
+  // Scheduling and timing
+  scheduledAt          DateTime
+  joinedAt             DateTime?
+  startedRecordingAt   DateTime?
+  endedAt              DateTime?
+  actualDuration       Int? // in seconds
+  
+  // Recording outputs (JSON for flexibility)
+  outputs Json // { recordingUrl, transcriptUrl, summaryUrl, etc. }
+  
+  // Platform detection and metadata
+  meetingPlatform   String // 'zoom' | 'google-meet' | etc.
+  platformMetadata  Json   // { meetingId, hostEmail, etc. }
+  
+  // Error handling
+  errors      Json // Array of BotError objects
+  retryCount  Int  @default(0)
+  lastError   String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  meeting    ClientMeeting     @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+  transcript MeetingTranscript?
+
+  @@map("recall_bots")
+}
+
+model MeetingTranscript {
+  id                String @id @default(cuid())
+  botId             String @unique
+  meetingId         String @unique
+  advisorId         String
+
+  // Raw transcript data
+  rawTranscript       String
+  processedTranscript String
+  confidence          Float  // 0-1
+  language            String @default("en")
+  duration            Int    // in seconds
+  wordCount           Int
+
+  // Speaker identification (JSON for flexibility)
+  speakers     Json // Array of TranscriptSpeaker objects
+  segments     Json // Array of TranscriptSegment objects
+  speakerCount Int
+
+  // AI-enhanced content (JSON for complex nested data)
+  aiAnalysis Json // { summary, keyPoints, actionItems, etc. }
+
+  // Content generation readiness
+  contentGenerationReady Boolean @default(false)
+  compliancePreCheck     Json    // { sensitiveDataDetected, etc. }
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  bot              RecallBot          @relation(fields: [botId], references: [id], onDelete: Cascade)
+  meeting          ClientMeeting      @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+  advisor          FinancialAdvisor   @relation(fields: [advisorId], references: [id])
+  generatedContent GeneratedContent[]
+
+  @@map("meeting_transcripts")
+}
+
+// ============================================================================
+// COMPLIANCE & VALIDATION
+// ============================================================================
+
+model ComplianceValidation {
+  id             String   @id @default(cuid())
+  contentId      String
+  advisorId      String
+  meetingId      String?
+  validationType String   // 'pre_publication' | 'post_publication' | etc.
+  status         String   // 'pending' | 'approved' | 'rejected' | etc.
+
+  // Comprehensive compliance checks (JSON for complex nested data)
+  complianceChecks Json // { finraCompliance, secCompliance, etc. }
+  
+  // Risk assessment
+  riskAssessment Json // { overallRiskScore, riskFactors, etc. }
+  
+  // Content modifications
+  contentModifications Json // { originalContent, modifiedContent, etc. }
+  
+  // Approval workflow
+  approvalWorkflow Json // { approvedBy, approvedAt, reviewedBy, etc. }
+  
+  // Complete audit trail
+  auditTrail Json // Array of ComplianceAuditEntry objects
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  advisor          FinancialAdvisor @relation(fields: [advisorId], references: [id])
+  meeting          ClientMeeting?   @relation(fields: [meetingId], references: [id])
+  generatedContent GeneratedContent @relation(fields: [contentId], references: [id], onDelete: Cascade)
+
+  @@map("compliance_validations")
+}
+
+// ============================================================================
+// CONTENT GENERATION & SOCIAL PUBLISHING
+// ============================================================================
+
+model GeneratedContent {
+  id        String @id @default(cuid())
+  requestId String // Links to generation request
+  advisorId String
+  meetingId String
+  platform  String // SocialPlatform enum
+
+  // Content details (JSON for flexibility)
+  content Json // { originalContent, finalContent, hashtags, etc. }
+
+  // AI generation metadata
+  aiMetadata Json // { model, promptVersion, tokensUsed, etc. }
+
+  // Compliance integration
+  complianceValidationId String?
+  complianceStatus       String  // 'pending' | 'approved' | etc.
+  riskScore              Int     // 0-100
+  complianceFlags        Json    // Array of compliance flag strings
+
+  // Publishing status
+  publishingStatus   String    // PublishingStatus enum
+  publishedPostId    String?   // Platform-specific post ID
+  publishingError    String?
+  publishingAttempts Json      // Array of PublishingAttempt objects
+
+  // Retry handling
+  retryCount Int @default(0)
+  maxRetries Int @default(3)
+  lastError  String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  advisor              FinancialAdvisor      @relation(fields: [advisorId], references: [id])
+  meeting              ClientMeeting         @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+  transcript           MeetingTranscript?    @relation(fields: [meetingId], references: [meetingId])
+  complianceValidation ComplianceValidation? @relation(fields: [complianceValidationId], references: [id])
+  socialMediaPost      SocialMediaPost?
+
+  @@map("generated_content")
+}
+
+model SocialMediaPost {
+  id                String @id @default(cuid())
+  generatedContentId String @unique
+  meetingId         String
+  advisorId         String
+  platform          String // SocialPlatform enum
+  contentType       String @default("post") // 'post' | 'article' | etc.
+
+  // Content details (JSON for complex nested data)
+  content Json // { originalContent, finalContent, hashtags, etc. }
+
+  // Publishing details
+  publishingDetails Json // { status, scheduledFor, publishedAt, etc. }
+
+  // Compliance integration
+  complianceValidationId String
+  complianceStatus       String // 'pending' | 'approved' | etc.
+
+  // Error handling and retries
+  publishingAttempts Json // Array of PublishingAttempt objects
+  lastError          String?
+  retryCount         Int @default(0)
+  maxRetries         Int @default(3)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  generatedContent     GeneratedContent     @relation(fields: [generatedContentId], references: [id], onDelete: Cascade)
+  meeting              ClientMeeting        @relation(fields: [meetingId], references: [id])
+  advisor              FinancialAdvisor     @relation(fields: [advisorId], references: [id])
+  complianceValidation ComplianceValidation @relation(fields: [complianceValidationId], references: [id])
+
+  @@map("social_media_posts")
+}
+
+model SocialMediaToken {
+  id       String @id @default(cuid())
+  userId   String
+  platform String // SocialPlatform enum
+  tokenType String // 'access' | 'refresh' | 'page_access'
+
+  // Token details (encrypted at rest)
+  encryptedToken    String
+  tokenScope        Json    // Array of scope strings
+  expiresAt         DateTime
+  refreshToken      String?
+  refreshExpiresAt  DateTime?
+
+  // Platform-specific details
+  platformDetails Json // { userId, username, pageId, etc. }
+
+  // Token health monitoring
+  healthStatus   String   // 'healthy' | 'expiring_soon' | etc.
+  lastValidated  DateTime
+  lastRefreshed  DateTime?
+  refreshCount   Int      @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, platform, tokenType])
+  @@map("social_media_tokens")
+}
+
+// ============================================================================
+// JOB QUEUE & ASYNC PROCESSING
+// ============================================================================
+
+model JobDefinition {
+  id       String @id @default(cuid())
+  type     String // JobType enum
+  priority String @default("normal") // 'low' | 'normal' | 'high' | 'critical'
+  payload  Json   // JobPayload union type
+
+  // Scheduling
+  scheduledFor     DateTime
+  delay            Int      // in milliseconds
+  maxAttempts      Int      @default(3)
+  backoffStrategy  String   @default("exponential") // 'fixed' | 'exponential' | 'linear'
+
+  // Execution tracking
+  status         String    // 'pending' | 'running' | 'completed' | etc.
+  attempts       Json      // Array of JobAttempt objects
+  currentAttempt Int       @default(0)
+  lastAttemptAt  DateTime?
+  completedAt    DateTime?
+
+  // Dependencies and relationships
+  dependsOn Json // Array of job ID strings
+  tags      Json // Array of tag strings
+  userId    String
+  advisorId String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  user    User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  advisor FinancialAdvisor? @relation(fields: [advisorId], references: [id])
+
+  @@index([status, scheduledFor])
+  @@index([type, status])
+  @@index([userId, status])
+  @@map("job_definitions")
+}
+
+// ============================================================================
+// SYSTEM MONITORING & HEALTH
+// ============================================================================
+
+model SystemHealth {
+  id            String   @id @default(cuid())
+  timestamp     DateTime @default(now())
+  overallStatus String   // 'healthy' | 'degraded' | 'unhealthy' | 'maintenance'
+  
+  // Service health data (JSON for flexibility)
+  services Json // Array of ServiceHealth objects
+  metrics  Json // SystemMetrics object
+  alerts   Json // Array of SystemAlert objects
+
+  @@index([timestamp])
+  @@map("system_health")
+}
+
+model SystemAlert {
+  id           String    @id @default(cuid())
+  severity     String    // 'info' | 'warning' | 'error' | 'critical'
+  category     String    // 'performance' | 'security' | 'compliance' | etc.
+  message      String
+  details      String
+  service      String?
+  userId       String?
+  
+  // Alert management
+  acknowledged   Boolean   @default(false)
+  acknowledgedBy String?
+  acknowledgedAt DateTime?
+  resolvedAt     DateTime?
+
+  createdAt DateTime @default(now())
+
+  // Relations
+  user User? @relation(fields: [userId], references: [id])
+
+  @@index([severity, acknowledged])
+  @@index([category, createdAt])
+  @@map("system_alerts")
+}
+
+// ============================================================================
+// CONFIGURATION & SETTINGS
+// ============================================================================
+
+model UserSettings {
+  id       String @id @default(cuid())
+  userId   String @unique
+  advisorId String
+
+  // Bot and automation settings (JSON for complex nested data)
+  botSettings Json // { defaultJoinMinutesBefore, autoScheduleBots, etc. }
+
+  // Content generation preferences
+  contentPreferences Json // { defaultTone, defaultLength, etc. }
+
+  // Compliance and approval settings
+  complianceSettings Json // { requireManualApproval, autoApprovalThreshold, etc. }
+
+  // Notification preferences
+  notificationSettings Json // { emailNotifications, smsNotifications, etc. }
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  user    User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  advisor FinancialAdvisor @relation(fields: [advisorId], references: [id])
+
+  @@map("user_settings")
+}
+
+model AutomationConfiguration {
+  id          String  @id @default(cuid())
+  userId      String
+  advisorId   String
+  name        String
+  description String?
+  isActive    Boolean @default(true)
+
+  // Trigger conditions (JSON for complex logic)
+  triggers Json // { onMeetingEnd, onTranscriptReady, etc. }
+
+  // Content generation rules
+  contentRules Json // { platforms[], maxPostsPerMeeting, etc. }
+
+  // Approval and publishing workflow
+  approvalWorkflow Json // { requireApproval, approvers[], etc. }
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  user    User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  advisor FinancialAdvisor @relation(fields: [advisorId], references: [id])
+
+  @@map("automation_configurations")
+}
+
+// ============================================================================
+// CALENDAR INTEGRATION
+// ============================================================================
+
+model CalendarIntegration {
+  id           String    @id @default(cuid())
+  userId       String
+  provider     String    // CalendarProvider enum
+  calendarId   String
+  
+  // OAuth token management
+  accessToken   String    // Encrypted
+  refreshToken  String?   // Encrypted
+  expiresAt     DateTime
+  tokenScope    Json      // Array of scope strings
+  
+  // Integration settings
+  isActive      Boolean   @default(true)
+  syncEnabled   Boolean   @default(true)
+  lastSyncAt    DateTime?
+  syncErrors    Json?     // Array of sync error objects
+  
+  // Calendar metadata
+  calendarName  String?
+  calendarColor String?
+  timeZone      String    @default("UTC")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, provider, calendarId])
+  @@map("calendar_integrations")
+}
+
+// ============================================================================
+// ANALYTICS & METRICS
+// ============================================================================
+
+model ContentAnalytics {
+  id        String @id @default(cuid())
+  contentId String @unique
+  platform  String // SocialPlatform enum
+
+  // Engagement metrics (JSON for platform-specific data)
+  engagement Json // { likes, comments, shares, etc. }
+
+  // Performance metrics
+  impressions     Int?
+  reach           Int?
+  clickThroughRate Float?
+  engagementRate  Float?
+
+  // Time-series data for tracking
+  metricsHistory Json // Array of timestamped metric snapshots
+
+  // Compliance and business metrics
+  complianceScore     Float? // 0-1
+  businessValueScore  Float? // Calculated business impact
+  advisorSatisfaction Int?   // 1-5 rating
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  generatedContent GeneratedContent @relation(fields: [contentId], references: [id], onDelete: Cascade)
+
+  @@map("content_analytics")
+}
+
+model BusinessMetrics {
+  id        String   @id @default(cuid())
+  advisorId String
+  date      DateTime // Daily metrics
+
+  // Time savings metrics
+  timeSavingsMinutes      Int // Total minutes saved
+  manualPostsAvoided      Int // Number of manual posts avoided
+  complianceIssuesAvoided Int // Compliance violations prevented
+
+  // Content metrics
+  postsGenerated   Int
+  postsPublished   Int
+  postsApproved    Int
+  postsRejected    Int
+  averageRiskScore Float
+
+  // Engagement metrics
+  totalImpressions Int @default(0)
+  totalEngagement  Int @default(0)
+  averageEngagementRate Float @default(0)
+
+  // Business value calculation
+  estimatedValueDollars Float // Based on time savings at billing rate
+
+  createdAt DateTime @default(now())
+
+  // Relations
+  advisor FinancialAdvisor @relation(fields: [advisorId], references: [id])
+
+  @@unique([advisorId, date])
+  @@index([date])
+  @@map("business_metrics")
+}
+
+// ============================================================================
+// ADDITIONAL RELATIONS & INDEXES
+// ============================================================================
+
+// Add missing relations to existing models
+model FinancialAdvisor {
+  // ... existing fields ...
+  
+  // Additional relations for new entities
+  userSettings      UserSettings[]
+  jobs              JobDefinition[]
+  transcripts       MeetingTranscript[]
+  socialMediaPosts  SocialMediaPost[]
+  businessMetrics   BusinessMetrics[]
+  
+  @@map("financial_advisors")
+}
+
+model User {
+  // ... existing fields ...
+  
+  // Additional relations
+  calendarIntegrations CalendarIntegration[]
+  systemAlerts         SystemAlert[]
+  
+  @@map("users")
+}
+
+model GeneratedContent {
+  // ... existing fields ...
+  
+  // Additional relations
+  analytics ContentAnalytics?
+  
+  @@map("generated_content")
+}
+
+// ============================================================================
+// PERFORMANCE INDEXES
+// ============================================================================
+
+// Optimize for common queries
+@@index([advisorId, createdAt], map: "idx_advisor_content_created")
+@@index([meetingId, platform], map: "idx_meeting_platform")
+@@index([complianceStatus, riskScore], map: "idx_compliance_risk")
+@@index([publishingStatus, createdAt], map: "idx_publishing_status")
+@@index([status, scheduledFor], map: "idx_job_scheduling")
+@@index([platform, healthStatus], map: "idx_token_health")
+
+// ============================================================================
+// SCHEMA VALIDATION & CONSTRAINTS
+// ============================================================================
+
+// Add check constraints for data integrity
+// Note: These would be added as raw SQL in migrations
+
+-- Risk scores must be 0-100
+-- ALTER TABLE compliance_validations ADD CONSTRAINT risk_score_range CHECK (risk_score >= 0 AND risk_score <= 100);
+
+-- Retry counts must be non-negative
+-- ALTER TABLE generated_content ADD CONSTRAINT retry_count_non_negative CHECK (retry_count >= 0);
+
+-- Meeting duration must be positive
+-- ALTER TABLE meeting_transcripts ADD CONSTRAINT duration_positive CHECK (duration > 0);
+
+-- Token expiry must be in future when created
+-- ALTER TABLE social_media_tokens ADD CONSTRAINT expires_at_future CHECK (expires_at > created_at);
