@@ -1,16 +1,13 @@
 /**
  * API Route: Generate Follow-up Email
  * POST /api/generate-email
- * 
+ *
  * Generates follow-up emails from meeting transcripts using OpenAI GPT-4
  */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
-import { 
-  getEmailGenerationFunction,
-  validateOpenAIConfig 
-} from '@/lib/openai';
+import { getEmailGenerationFunction, validateOpenAIConfig } from '@/lib/openai';
 import { handleError } from '@/lib/utils';
 
 // ============================================================================
@@ -20,7 +17,7 @@ import { handleError } from '@/lib/utils';
 const GenerateEmailRequestSchema = z.object({
   transcript: z.string().min(10, 'Transcript must be at least 10 characters'),
   attendees: z.array(z.string()).min(1, 'At least one attendee is required'),
-  meetingTitle: z.string().min(1, 'Meeting title is required')
+  meetingTitle: z.string().min(1, 'Meeting title is required'),
 });
 
 // ============================================================================
@@ -52,36 +49,41 @@ export async function POST(request: NextRequest) {
       metadata: {
         timestamp: new Date().toISOString(),
         requestId: crypto.randomUUID(),
-        usingMockData: !configCheck.isValid
-      }
+        usingMockData: !configCheck.isValid,
+      },
     });
-
   } catch (error) {
     console.error('Generate email API error:', error);
 
     // Handle Zod validation errors
     if (error instanceof z.ZodError) {
-      return NextResponse.json({
-        success: false,
-        error: {
-          message: 'Invalid request data',
-          code: 'VALIDATION_ERROR',
-          details: error.errors,
-          timestamp: new Date().toISOString()
-        }
-      }, { status: 400 });
+      return NextResponse.json(
+        {
+          success: false,
+          error: {
+            message: 'Invalid request data',
+            code: 'VALIDATION_ERROR',
+            details: error.issues,
+            timestamp: new Date().toISOString(),
+          },
+        },
+        { status: 400 }
+      );
     }
 
     // Handle other errors
     const errorDetails = handleError(error);
-    return NextResponse.json({
-      success: false,
-      error: {
-        message: errorDetails.message,
-        code: errorDetails.code || 'INTERNAL_ERROR',
-        timestamp: new Date().toISOString()
-      }
-    }, { status: 500 });
+    return NextResponse.json(
+      {
+        success: false,
+        error: {
+          message: errorDetails.message,
+          code: errorDetails.code || 'INTERNAL_ERROR',
+          timestamp: new Date().toISOString(),
+        },
+      },
+      { status: 500 }
+    );
   }
 }
 

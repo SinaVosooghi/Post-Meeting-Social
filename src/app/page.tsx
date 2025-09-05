@@ -1,20 +1,19 @@
 /**
  * Main Application Page
  * Post-Meeting Social Media Content Generator
- * 
+ *
  * Phase 1: Core AI functionality demo with hardcoded data
  */
 
 'use client';
 
 import React, { useState } from 'react';
-import { 
-  SocialPlatform, 
-  ContentTone, 
-  ContentLength, 
+import {
+  ContentTone,
+  ContentLength,
   MeetingPlatform,
   GeneratePostsRequest,
-  GeneratePostsResponse 
+  GeneratePostsResponse,
 } from '@/types';
 
 // ============================================================================
@@ -45,7 +44,7 @@ const SAMPLE_MEETING_CONTEXT = {
   title: 'Q4 Portfolio Review with Sarah Johnson',
   attendees: ['John Smith (Financial Advisor)', 'Sarah Johnson (Client)'],
   duration: 45,
-  platform: MeetingPlatform.ZOOM
+  platform: MeetingPlatform.ZOOM,
 };
 
 const DEFAULT_AUTOMATION_SETTINGS = {
@@ -55,7 +54,7 @@ const DEFAULT_AUTOMATION_SETTINGS = {
   tone: ContentTone.PROFESSIONAL,
   length: ContentLength.MEDIUM,
   publishImmediately: false,
-  scheduleDelay: 0
+  scheduleDelay: 0,
 };
 
 // ============================================================================
@@ -66,7 +65,12 @@ export default function HomePage() {
   const [transcript, setTranscript] = useState(SAMPLE_TRANSCRIPT);
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedPosts, setGeneratedPosts] = useState<GeneratePostsResponse | null>(null);
-  const [generatedEmail, setGeneratedEmail] = useState<any>(null);
+  const [generatedEmail, setGeneratedEmail] = useState<{
+    subject: string;
+    content: string;
+    actionItems: string[];
+    nextSteps: string;
+  } | null>(null);
   const [activeTab, setActiveTab] = useState<'posts' | 'email'>('posts');
   const [error, setError] = useState<string | null>(null);
 
@@ -79,7 +83,7 @@ export default function HomePage() {
       const request: GeneratePostsRequest = {
         transcript,
         meetingContext: SAMPLE_MEETING_CONTEXT,
-        automationSettings: DEFAULT_AUTOMATION_SETTINGS
+        automationSettings: DEFAULT_AUTOMATION_SETTINGS,
       };
 
       const response = await fetch('/api/generate-posts', {
@@ -95,7 +99,7 @@ export default function HomePage() {
       }
 
       const result = await response.json();
-      
+
       if (result.success) {
         setGeneratedPosts(result.data);
       } else {
@@ -124,7 +128,7 @@ export default function HomePage() {
         body: JSON.stringify({
           transcript,
           attendees: SAMPLE_MEETING_CONTEXT.attendees,
-          meetingTitle: SAMPLE_MEETING_CONTEXT.title
+          meetingTitle: SAMPLE_MEETING_CONTEXT.title,
         }),
       });
 
@@ -133,7 +137,7 @@ export default function HomePage() {
       }
 
       const result = await response.json();
-      
+
       if (result.success) {
         setGeneratedEmail(result.data);
       } else {
@@ -168,7 +172,8 @@ export default function HomePage() {
             🎯 Post-Meeting Social Content Generator
           </h1>
           <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-            Transform your meeting transcripts into engaging social media posts and professional follow-up emails using AI
+            Transform your meeting transcripts into engaging social media posts and professional
+            follow-up emails using AI
           </p>
           <div className="mt-4 inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800">
             ✅ Phase 1: Core AI Functionality Demo
@@ -179,10 +184,8 @@ export default function HomePage() {
         <div className="grid lg:grid-cols-2 gap-8">
           {/* Input Section */}
           <div className="bg-white rounded-xl shadow-lg p-6">
-            <h2 className="text-2xl font-semibold text-gray-800 mb-4">
-              📝 Meeting Transcript
-            </h2>
-            
+            <h2 className="text-2xl font-semibold text-gray-800 mb-4">📝 Meeting Transcript</h2>
+
             <div className="mb-4">
               <label htmlFor="transcript" className="block text-sm font-medium text-gray-700 mb-2">
                 Paste your meeting transcript below:
@@ -190,7 +193,7 @@ export default function HomePage() {
               <textarea
                 id="transcript"
                 value={transcript}
-                onChange={(e) => setTranscript(e.target.value)}
+                onChange={e => setTranscript(e.target.value)}
                 className="w-full h-64 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
                 placeholder="Paste your meeting transcript here..."
               />
@@ -200,10 +203,18 @@ export default function HomePage() {
             <div className="bg-gray-50 rounded-lg p-4 mb-6">
               <h3 className="text-sm font-semibold text-gray-700 mb-2">Meeting Context:</h3>
               <div className="text-sm text-gray-600 space-y-1">
-                <div><strong>Title:</strong> {SAMPLE_MEETING_CONTEXT.title}</div>
-                <div><strong>Duration:</strong> {SAMPLE_MEETING_CONTEXT.duration} minutes</div>
-                <div><strong>Platform:</strong> {SAMPLE_MEETING_CONTEXT.platform}</div>
-                <div><strong>Attendees:</strong> {SAMPLE_MEETING_CONTEXT.attendees.join(', ')}</div>
+                <div>
+                  <strong>Title:</strong> {SAMPLE_MEETING_CONTEXT.title}
+                </div>
+                <div>
+                  <strong>Duration:</strong> {SAMPLE_MEETING_CONTEXT.duration} minutes
+                </div>
+                <div>
+                  <strong>Platform:</strong> {SAMPLE_MEETING_CONTEXT.platform}
+                </div>
+                <div>
+                  <strong>Attendees:</strong> {SAMPLE_MEETING_CONTEXT.attendees.join(', ')}
+                </div>
               </div>
             </div>
 
@@ -223,7 +234,7 @@ export default function HomePage() {
                   '🚀 Generate Social Posts'
                 )}
               </button>
-              
+
               <button
                 onClick={handleGenerateEmail}
                 disabled={isGenerating || !transcript.trim()}
@@ -244,17 +255,15 @@ export default function HomePage() {
           {/* Output Section */}
           <div className="bg-white rounded-xl shadow-lg p-6">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-2xl font-semibold text-gray-800">
-                🎨 Generated Content
-              </h2>
-              
+              <h2 className="text-2xl font-semibold text-gray-800">🎨 Generated Content</h2>
+
               {/* Tab Buttons */}
               <div className="flex rounded-lg bg-gray-100 p-1">
                 <button
                   onClick={() => setActiveTab('posts')}
                   className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
-                    activeTab === 'posts' 
-                      ? 'bg-white text-blue-600 shadow-sm' 
+                    activeTab === 'posts'
+                      ? 'bg-white text-blue-600 shadow-sm'
                       : 'text-gray-500 hover:text-gray-700'
                   }`}
                 >
@@ -263,8 +272,8 @@ export default function HomePage() {
                 <button
                   onClick={() => setActiveTab('email')}
                   className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
-                    activeTab === 'email' 
-                      ? 'bg-white text-green-600 shadow-sm' 
+                    activeTab === 'email'
+                      ? 'bg-white text-green-600 shadow-sm'
                       : 'text-gray-500 hover:text-gray-700'
                   }`}
                 >
@@ -290,14 +299,15 @@ export default function HomePage() {
                 {generatedPosts ? (
                   <>
                     <div className="text-sm text-gray-500 mb-4">
-                      Generated {generatedPosts.posts.length} posts in {generatedPosts.metadata.processingTimeMs}ms
+                      Generated {generatedPosts.posts.length} posts in{' '}
+                      {generatedPosts.metadata.processingTimeMs}ms
                       {generatedPosts.metadata.model.includes('mock') && (
                         <span className="ml-2 px-2 py-1 bg-yellow-100 text-yellow-800 rounded text-xs">
                           Using Mock Data
                         </span>
                       )}
                     </div>
-                    
+
                     {generatedPosts.posts.map((post, index) => (
                       <div key={index} className="border border-gray-200 rounded-lg p-4">
                         <div className="flex items-center justify-between mb-2">
@@ -316,11 +326,9 @@ export default function HomePage() {
                             📋 Copy
                           </button>
                         </div>
-                        
-                        <p className="text-gray-800 mb-3 leading-relaxed">
-                          {post.content}
-                        </p>
-                        
+
+                        <p className="text-gray-800 mb-3 leading-relaxed">{post.content}</p>
+
                         {post.hashtags && post.hashtags.length > 0 && (
                           <div className="flex flex-wrap gap-1 mb-2">
                             {post.hashtags.map((hashtag, idx) => (
@@ -333,7 +341,7 @@ export default function HomePage() {
                             ))}
                           </div>
                         )}
-                        
+
                         {post.reasoning && (
                           <div className="text-xs text-gray-500 italic border-t pt-2 mt-2">
                             <strong>AI Reasoning:</strong> {post.reasoning}
@@ -345,7 +353,7 @@ export default function HomePage() {
                 ) : (
                   <div className="text-center py-12 text-gray-500">
                     <div className="text-4xl mb-4">📱</div>
-                    <p>Click "Generate Social Posts" to see AI-generated content</p>
+                    <p>Click &quot;Generate Social Posts&quot; to see AI-generated content</p>
                   </div>
                 )}
               </div>
@@ -359,40 +367,52 @@ export default function HomePage() {
                     <div className="flex items-center justify-between">
                       <span className="text-sm text-gray-500">Generated follow-up email</span>
                       <button
-                        onClick={() => handleCopyToClipboard(`Subject: ${generatedEmail.subject}\n\n${generatedEmail.content}`)}
+                        onClick={() =>
+                          handleCopyToClipboard(
+                            `Subject: ${generatedEmail.subject}\n\n${generatedEmail.content}`
+                          )
+                        }
                         className="text-sm text-blue-600 hover:text-blue-700 font-medium"
                       >
                         📋 Copy Email
                       </button>
                     </div>
-                    
+
                     <div className="border border-gray-200 rounded-lg p-4">
                       <div className="mb-4">
                         <label className="text-sm font-medium text-gray-700">Subject:</label>
                         <p className="text-gray-800 font-medium">{generatedEmail.subject}</p>
                       </div>
-                      
+
                       <div className="mb-4">
-                        <label className="text-sm font-medium text-gray-700 mb-2 block">Content:</label>
+                        <label className="text-sm font-medium text-gray-700 mb-2 block">
+                          Content:
+                        </label>
                         <div className="bg-gray-50 rounded p-3 text-gray-800 whitespace-pre-wrap">
                           {generatedEmail.content}
                         </div>
                       </div>
-                      
+
                       {generatedEmail.actionItems && generatedEmail.actionItems.length > 0 && (
                         <div className="mb-4">
-                          <label className="text-sm font-medium text-gray-700 mb-2 block">Action Items:</label>
+                          <label className="text-sm font-medium text-gray-700 mb-2 block">
+                            Action Items:
+                          </label>
                           <ul className="list-disc list-inside space-y-1">
                             {generatedEmail.actionItems.map((item: string, index: number) => (
-                              <li key={index} className="text-gray-700 text-sm">{item}</li>
+                              <li key={index} className="text-gray-700 text-sm">
+                                {item}
+                              </li>
                             ))}
                           </ul>
                         </div>
                       )}
-                      
+
                       {generatedEmail.nextSteps && (
                         <div>
-                          <label className="text-sm font-medium text-gray-700 mb-2 block">Next Steps:</label>
+                          <label className="text-sm font-medium text-gray-700 mb-2 block">
+                            Next Steps:
+                          </label>
                           <p className="text-gray-700 text-sm">{generatedEmail.nextSteps}</p>
                         </div>
                       )}
@@ -401,7 +421,7 @@ export default function HomePage() {
                 ) : (
                   <div className="text-center py-12 text-gray-500">
                     <div className="text-4xl mb-4">📧</div>
-                    <p>Click "Generate Follow-up Email" to see AI-generated content</p>
+                    <p>Click &quot;Generate Follow-up Email&quot; to see AI-generated content</p>
                   </div>
                 )}
               </div>

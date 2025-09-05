@@ -1,13 +1,13 @@
 /**
  * Core Utility Functions
  * Post-Meeting Social Media Content Generator
- * 
+ *
  * This file contains essential utility functions used throughout the application.
  * All functions are strictly typed and include comprehensive error handling.
  */
 
-import { type ClassValue, clsx } from "clsx";
-import { twMerge } from "tailwind-merge";
+import { type ClassValue, clsx } from 'clsx';
+import { twMerge } from 'tailwind-merge';
 
 // ============================================================================
 // STYLING UTILITIES
@@ -51,7 +51,7 @@ export function isNonEmptyString(value: unknown): value is string {
  */
 export function isValidEmail(value: unknown): value is string {
   if (!isNonEmptyString(value)) return false;
-  
+
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   return emailRegex.test(value);
 }
@@ -63,7 +63,7 @@ export function isValidEmail(value: unknown): value is string {
  */
 export function isValidUrl(value: unknown): value is string {
   if (!isNonEmptyString(value)) return false;
-  
+
   try {
     new URL(value);
     return true;
@@ -91,11 +91,11 @@ export function formatDate(
   }
 ): string {
   const dateObj = new Date(date);
-  
+
   if (isNaN(dateObj.getTime())) {
     throw new Error('Invalid date provided to formatDate');
   }
-  
+
   return new Intl.DateTimeFormat('en-US', options).format(dateObj);
 }
 
@@ -107,13 +107,13 @@ export function formatDate(
 export function formatRelativeTime(date: Date | string | number): string {
   const dateObj = new Date(date);
   const now = new Date();
-  
+
   if (isNaN(dateObj.getTime())) {
     throw new Error('Invalid date provided to formatRelativeTime');
   }
-  
+
   const diffInSeconds = Math.floor((now.getTime() - dateObj.getTime()) / 1000);
-  
+
   if (diffInSeconds < 60) {
     return 'just now';
   } else if (diffInSeconds < 3600) {
@@ -138,11 +138,11 @@ export function formatRelativeTime(date: Date | string | number): string {
 export function isFutureDate(date: Date | string | number): boolean {
   const dateObj = new Date(date);
   const now = new Date();
-  
+
   if (isNaN(dateObj.getTime())) {
     return false;
   }
-  
+
   return dateObj.getTime() > now.getTime();
 }
 
@@ -203,10 +203,8 @@ export function toKebabCase(str: string): string {
  */
 export function toCamelCase(str: string): string {
   return str
-    .replace(/(?:^\w|[A-Z]|\b\w)/g, (word, index) => {
-      return index === 0 ? word.toLowerCase() : word.toUpperCase();
-    })
-    .replace(/\s+/g, '');
+    .replace(/[-_\s]+(.)?/g, (_, char) => (char ? char.toUpperCase() : ''))
+    .replace(/^[A-Z]/, char => char.toLowerCase());
 }
 
 /**
@@ -217,7 +215,7 @@ export function toCamelCase(str: string): string {
  */
 export function getInitials(name: string, maxInitials = 2): string {
   if (!name) return '';
-  
+
   return name
     .split(' ')
     .filter(Boolean)
@@ -256,7 +254,7 @@ export function uniqueBy<T, K>(array: T[], keyFn: (item: T) => K): T[] {
  */
 export function chunk<T>(array: T[], size: number): T[][] {
   if (size <= 0) throw new Error('Chunk size must be positive');
-  
+
   const chunks: T[][] = [];
   for (let i = 0; i < array.length; i += size) {
     chunks.push(array.slice(i, i + size));
@@ -273,7 +271,9 @@ export function shuffle<T>(array: T[]): T[] {
   const result = [...array];
   for (let i = result.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
-    [result[i], result[j]] = [result[j], result[i]];
+    const temp = result[i];
+    result[i] = result[j]!;
+    result[j] = temp!;
   }
   return result;
 }
@@ -291,7 +291,7 @@ export function deepClone<T>(obj: T): T {
   if (obj === null || typeof obj !== 'object') {
     return obj;
   }
-  
+
   try {
     return JSON.parse(JSON.stringify(obj));
   } catch (error) {
@@ -346,24 +346,22 @@ export function omit<T extends Record<string, unknown>, K extends keyof T>(
  */
 export function handleError(error: unknown): { message: string; code?: string } {
   if (error instanceof Error) {
-    return {
-      message: error.message,
-      code: 'name' in error ? String(error.name) : undefined,
-    };
+    const code = 'name' in error ? String(error.name) : undefined;
+    return code ? { message: error.message, code } : { message: error.message };
   }
-  
+
   if (typeof error === 'string') {
     return { message: error };
   }
-  
+
   if (typeof error === 'object' && error !== null) {
     const errorObj = error as Record<string, unknown>;
-    return {
-      message: String(errorObj.message ?? 'Unknown error occurred'),
-      code: errorObj.code ? String(errorObj.code) : undefined,
-    };
+    const code = errorObj.code ? String(errorObj.code) : undefined;
+    return code
+      ? { message: String(errorObj.message ?? 'Unknown error occurred'), code }
+      : { message: String(errorObj.message ?? 'Unknown error occurred') };
   }
-  
+
   return { message: 'Unknown error occurred' };
 }
 
@@ -412,28 +410,24 @@ export function delay(ms: number): Promise<void> {
  * @param baseDelay - Base delay in milliseconds
  * @returns Promise with the function result
  */
-export async function retry<T>(
-  fn: () => Promise<T>,
-  maxRetries = 3,
-  baseDelay = 1000
-): Promise<T> {
+export async function retry<T>(fn: () => Promise<T>, maxRetries = 3, baseDelay = 1000): Promise<T> {
   let lastError: unknown;
-  
+
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     try {
       return await fn();
     } catch (error) {
       lastError = error;
-      
+
       if (attempt === maxRetries) {
         throw error;
       }
-      
+
       const delayMs = baseDelay * Math.pow(2, attempt);
       await delay(delayMs);
     }
   }
-  
+
   throw lastError;
 }
 
@@ -452,6 +446,6 @@ export async function withTimeout<T>(
   const timeoutPromise = new Promise<never>((_, reject) => {
     setTimeout(() => reject(new Error(timeoutMessage)), timeoutMs);
   });
-  
+
   return Promise.race([promise, timeoutPromise]);
 }
