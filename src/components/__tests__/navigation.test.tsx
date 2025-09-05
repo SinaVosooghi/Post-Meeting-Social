@@ -20,16 +20,17 @@ jest.mock('next-auth/react', () => ({
   SessionProvider: ({ children }: { children: React.ReactNode }) => children,
 }));
 
-const { useSession } = require('next-auth/react');
+import { useSession } from 'next-auth/react';
 
 // Mock Next.js Image component
 jest.mock('next/image', () => {
-  return function MockImage({ src, alt, ...props }: any) {
+  return function MockImage({ src, alt, ...props }: { src: string; alt: string; [key: string]: unknown }) {
+    // eslint-disable-next-line @next/next/no-img-element
     return <img src={src} alt={alt} {...props} />;
   };
 });
 
-const renderWithSession = (session: any = null) => {
+const renderWithSession = (session: { user?: { id?: string; name?: string; email?: string; image?: string | null } } | null = null) => {
   return render(
     <SessionProvider session={session}>
       <Navigation />

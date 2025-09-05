@@ -71,6 +71,8 @@ export async function exchangeLinkedInCode(
   scope: string;
 }> {
   try {
+    // mark state as intentionally unused for linting purposes
+    void _state;
     const response = await fetch(LINKEDIN_CONFIG.tokenUrl, {
       method: 'POST',
       headers: {
@@ -619,6 +621,7 @@ export const MOCK_LINKEDIN_TOKEN: Partial<SocialMediaToken> = {
 /**
  * Mock LinkedIn post for development
  */
+/* eslint-disable @typescript-eslint/no-unused-vars */
 export async function createMockLinkedInPost(
   _content: string,
   _hashtags: string[] = []
@@ -646,6 +649,7 @@ export async function createMockLinkedInPost(
     },
   };
 }
+/* eslint-enable @typescript-eslint/no-unused-vars */
 
 /**
  * Mock LinkedIn profile for development

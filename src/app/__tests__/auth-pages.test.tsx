@@ -6,18 +6,16 @@
  */
 
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import { signIn } from 'next-auth/react';
 import SignInPage from '../auth/signin/page';
 import AuthErrorPage from '../auth/error/page';
 
 // Mock next-auth/react
 const mockSignIn = jest.fn();
 jest.mock('next-auth/react', () => ({
-  signIn: (provider: string, options: any) => mockSignIn(provider, options),
+  signIn: (provider: string, options: Record<string, unknown>) => mockSignIn(provider, options),
 }));
 
 // Mock next/navigation
-const mockPush = jest.fn();
 jest.mock('next/navigation', () => ({
   useSearchParams: () => ({
     get: (key: string) => (key === 'error' ? 'AccessDenied' : null),

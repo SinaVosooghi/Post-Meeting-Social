@@ -5,13 +5,17 @@
  * Handles meeting bot scheduling, transcript retrieval, and recording management
  */
 
-import type { 
-  RecallBot, 
-  BotStatus, 
+import type {
+  RecallBot,
+  BotStatus,
   BotConfig,
   MeetingTranscript,
-  RecallApiResponse 
+  RecallApiResponse,
 } from '@/types';
+import type {
+  RecallBotApi,
+  RecallTranscriptApi,
+} from '@/types/master-interfaces';
 
 // ============================================================================
 // RECALL.AI CONFIGURATION
@@ -135,7 +139,7 @@ export async function getBotStatus(botId: string): Promise<RecallBot> {
       return getMockBotStatus(botId);
     }
 
-    const response = await recallApiRequest<RecallApiResponse<any>>(`/bots/${botId}`);
+    const response = await recallApiRequest<RecallApiResponse<RecallBotApi>>(`/bots/${botId}`);
     
     return {
       id: response.data.id,
@@ -211,7 +215,7 @@ export async function listMeetingBots(
     if (options.dateFrom) params.append('created_after', options.dateFrom.toISOString());
     if (options.dateTo) params.append('created_before', options.dateTo.toISOString());
 
-    const response = await recallApiRequest<RecallApiResponse<any[]>>(
+    const response = await recallApiRequest<RecallApiResponse<RecallBotApi[]>>(
       `/bots?${params.toString()}`
     );
 
@@ -260,14 +264,14 @@ export async function getMeetingTranscript(botId: string): Promise<MeetingTransc
       return getMockTranscript(botId);
     }
 
-    const response = await recallApiRequest<RecallApiResponse<any>>(`/bots/${botId}/transcript`);
+    const response = await recallApiRequest<RecallApiResponse<RecallTranscriptApi>>(`/bots/${botId}/transcript`);
     
     return {
       botId,
       meetingId: response.data.meeting_id,
       content: response.data.transcript,
       speakers: response.data.speakers || [],
-      segments: response.data.segments?.map((segment: any) => ({
+      segments: response.data.segments?.map((segment) => ({
         speaker: segment.speaker,
         text: segment.text,
         startTime: segment.start_time,
@@ -395,7 +399,7 @@ function getMockBotStatus(botId: string): RecallBot {
 /**
  * Gets mock bot list
  */
-function getMockBotList(options: any): RecallBot[] {
+function getMockBotList(options: { status?: BotStatus; limit?: number }): RecallBot[] {
   const bots = [
     getMockBotStatus('mock-bot-old-1'),
     getMockBotStatus('mock-bot-active-2'),
