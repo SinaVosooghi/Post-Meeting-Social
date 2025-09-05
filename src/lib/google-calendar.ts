@@ -77,7 +77,14 @@ export async function getUpcomingEvents(
       calendarId = 'primary'
     } = options;
 
-    const listParams: any = {
+    const listParams: {
+      calendarId: string;
+      timeMin: string;
+      timeMax?: string;
+      maxResults: number;
+      singleEvents: boolean;
+      orderBy: 'startTime';
+    } = {
       calendarId,
       timeMin: timeMin.toISOString(),
       maxResults,
@@ -97,11 +104,11 @@ export async function getUpcomingEvents(
       id: event.id!,
       title: event.summary || 'Untitled Meeting',
       description: event.description || '',
-      startTime: new Date(event.start?.dateTime || event.start?.date!),
-      endTime: new Date(event.end?.dateTime || event.end?.date!),
+      startTime: parseGoogleDate(event.start),
+      endTime: parseGoogleDate(event.end),
       attendees: event.attendees?.map(attendee => ({
-        email: attendee.email!,
-        name: attendee.displayName || attendee.email!.split('@')[0] || 'Unknown',
+        email: attendee.email || '',
+        name: attendee.displayName || (attendee.email ? attendee.email.split('@')[0] : 'Unknown'),
         responseStatus: attendee.responseStatus as 'needsAction' | 'declined' | 'tentative' | 'accepted',
         isOrganizer: attendee.organizer || false,
       })) || [],
@@ -173,11 +180,11 @@ export async function createCalendarEvent(
       id: event.id!,
       title: event.summary!,
       description: event.description || '',
-      startTime: new Date(event.start?.dateTime!),
-      endTime: new Date(event.end?.dateTime!),
+      startTime: parseGoogleDate(event.start),
+      endTime: parseGoogleDate(event.end),
       attendees: event.attendees?.map(attendee => ({
-        email: attendee.email!,
-        name: attendee.displayName || attendee.email!.split('@')[0] || 'Unknown',
+        email: attendee.email || '',
+        name: attendee.displayName || (attendee.email ? attendee.email.split('@')[0] : 'Unknown'),
         responseStatus: attendee.responseStatus as 'needsAction' | 'declined' | 'tentative' | 'accepted',
         isOrganizer: attendee.organizer || false,
       })) || [],
@@ -217,7 +224,14 @@ export async function updateCalendarEvent(
     const calendar = createGoogleCalendarClient(accessToken);
     
     // Prepare update data
-    const updateData: any = {};
+    const updateData: {
+      summary?: string;
+      description?: string;
+      location?: string;
+      start?: { dateTime: string; timeZone: string };
+      end?: { dateTime: string; timeZone: string };
+      attendees?: { email: string }[];
+    } = {};
     
     if (updates.title !== undefined) updateData.summary = updates.title;
     if (updates.description !== undefined) updateData.description = updates.description;
@@ -253,11 +267,11 @@ export async function updateCalendarEvent(
       id: event.id!,
       title: event.summary!,
       description: event.description || '',
-      startTime: new Date(event.start?.dateTime || event.start?.date!),
-      endTime: new Date(event.end?.dateTime || event.end?.date!),
+      startTime: parseGoogleDate(event.start),
+      endTime: parseGoogleDate(event.end),
       attendees: event.attendees?.map(attendee => ({
-        email: attendee.email!,
-        name: attendee.displayName || attendee.email!.split('@')[0] || 'Unknown',
+        email: attendee.email || '',
+        name: attendee.displayName || (attendee.email ? attendee.email.split('@')[0] : 'Unknown'),
         responseStatus: attendee.responseStatus as 'needsAction' | 'declined' | 'tentative' | 'accepted',
         isOrganizer: attendee.organizer || false,
       })) || [],
@@ -322,6 +336,20 @@ function extractMeetingUrl(description: string): string {
   }
 
   return '';
+}
+
+/**
+ * Parses Google Calendar API date fields safely
+ */
+function parseGoogleDate(dateField: { dateTime?: string | null; date?: string | null } | undefined): Date {
+  if (!dateField) {
+    throw new Error('Missing date field');
+  }
+  const iso = dateField.dateTime || dateField.date;
+  if (!iso) {
+    throw new Error('Missing date value');
+  }
+  return new Date(iso);
 }
 
 /**

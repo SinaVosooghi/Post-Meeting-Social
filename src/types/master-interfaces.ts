@@ -1146,3 +1146,54 @@ export interface RateLimitInfo {
   readonly resetAt: Date;
   readonly retryAfter?: number; // in seconds
 }
+
+// ==========================================================================
+// External API Raw Shapes (Recall.ai) - centralized here per project convention
+// ==========================================================================
+
+/**
+ * Raw Recall.ai Bot payload (snake_case) from their REST API
+ */
+export interface RecallBotApi {
+  readonly id: string;
+  readonly meeting_url: string;
+  readonly status: 'scheduled' | 'joining' | 'recording' | 'completed' | 'failed';
+  readonly bot_name?: string;
+  readonly created_at: string;
+  readonly started_at?: string | null;
+  readonly ended_at?: string | null;
+  readonly recording_url?: string | null;
+  readonly transcript_url?: string | null;
+  readonly record_audio?: boolean;
+  readonly record_video?: boolean;
+  readonly record_screen?: boolean;
+  readonly webhook_url?: string | null;
+  readonly duration?: number | null;
+  readonly participant_count?: number | null;
+  readonly transcript_word_count?: number | null;
+}
+
+/**
+ * Raw Recall.ai transcript payload (snake_case) from their REST API
+ */
+export interface RecallTranscriptApiSegment {
+  readonly speaker: string;
+  readonly text: string;
+  readonly start_time: number;
+  readonly end_time: number;
+  readonly confidence?: number;
+}
+
+export interface RecallTranscriptApi {
+  readonly meeting_id: string;
+  readonly transcript: string;
+  readonly speakers?: readonly string[];
+  readonly segments?: readonly RecallTranscriptApiSegment[];
+  readonly summary?: string | null;
+  readonly key_points?: readonly string[];
+  readonly action_items?: readonly string[];
+  readonly duration?: number;
+  readonly word_count?: number;
+  readonly language?: string;
+  readonly created_at: string;
+}
