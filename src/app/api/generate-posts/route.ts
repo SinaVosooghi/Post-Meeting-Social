@@ -1,23 +1,14 @@
 /**
  * API Route: Generate Social Media Posts
  * POST /api/generate-posts
- * 
+ *
  * Generates social media posts from meeting transcripts using OpenAI GPT-4
  */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
-import { 
-  getPostGenerationFunction,
-  validateOpenAIConfig 
-} from '@/lib/openai';
-import { 
-  GeneratePostsRequest,
-  SocialPlatform,
-  ContentTone,
-  ContentLength,
-  MeetingPlatform 
-} from '@/types';
+import { getPostGenerationFunction, validateOpenAIConfig } from '@/lib/openai';
+import { ContentTone, ContentLength, MeetingPlatform } from '@/types';
 import { handleError } from '@/lib/utils';
 
 // ============================================================================
@@ -30,7 +21,7 @@ const GeneratePostsRequestSchema = z.object({
     title: z.string().min(1, 'Meeting title is required'),
     attendees: z.array(z.string()).min(1, 'At least one attendee is required'),
     duration: z.number().positive('Duration must be positive'),
-    platform: z.nativeEnum(MeetingPlatform)
+    platform: z.nativeEnum(MeetingPlatform),
   }),
   automationSettings: z.object({
     maxPosts: z.number().min(1).max(10).default(3),
@@ -39,8 +30,8 @@ const GeneratePostsRequestSchema = z.object({
     tone: z.nativeEnum(ContentTone).default(ContentTone.PROFESSIONAL),
     length: z.nativeEnum(ContentLength).default(ContentLength.MEDIUM),
     publishImmediately: z.boolean().default(false),
-    scheduleDelay: z.number().min(0).default(0)
-  })
+    scheduleDelay: z.number().min(0).default(0),
+  }),
 });
 
 // ============================================================================
@@ -72,36 +63,41 @@ export async function POST(request: NextRequest) {
       metadata: {
         timestamp: new Date().toISOString(),
         requestId: crypto.randomUUID(),
-        usingMockData: !configCheck.isValid
-      }
+        usingMockData: !configCheck.isValid,
+      },
     });
-
   } catch (error) {
     console.error('Generate posts API error:', error);
 
     // Handle Zod validation errors
     if (error instanceof z.ZodError) {
-      return NextResponse.json({
-        success: false,
-        error: {
-          message: 'Invalid request data',
-          code: 'VALIDATION_ERROR',
-          details: error.errors,
-          timestamp: new Date().toISOString()
-        }
-      }, { status: 400 });
+      return NextResponse.json(
+        {
+          success: false,
+          error: {
+            message: 'Invalid request data',
+            code: 'VALIDATION_ERROR',
+            details: error.issues,
+            timestamp: new Date().toISOString(),
+          },
+        },
+        { status: 400 }
+      );
     }
 
     // Handle other errors
     const errorDetails = handleError(error);
-    return NextResponse.json({
-      success: false,
-      error: {
-        message: errorDetails.message,
-        code: errorDetails.code || 'INTERNAL_ERROR',
-        timestamp: new Date().toISOString()
-      }
-    }, { status: 500 });
+    return NextResponse.json(
+      {
+        success: false,
+        error: {
+          message: errorDetails.message,
+          code: errorDetails.code || 'INTERNAL_ERROR',
+          timestamp: new Date().toISOString(),
+        },
+      },
+      { status: 500 }
+    );
   }
 }
 

@@ -1,19 +1,18 @@
 /**
  * OpenAI Integration Service
  * Post-Meeting Social Media Content Generator
- * 
+ *
  * This service handles all interactions with OpenAI's GPT-4 API for generating
  * social media posts and follow-up emails from meeting transcripts.
  */
 
 import OpenAI from 'openai';
-import { 
-  GeneratePostsRequest, 
-  GeneratePostsResponse, 
-  SocialPlatform, 
-  ContentTone, 
+import {
+  GeneratePostsRequest,
+  GeneratePostsResponse,
+  SocialPlatform,
+  ContentTone,
   ContentLength,
-  AutomationSettings 
 } from '@/types';
 import { handleError, retry, withTimeout } from '@/lib/utils';
 
@@ -28,10 +27,17 @@ const OPENAI_CONFIG = {
   model: 'gpt-4' as const,
 } as const;
 
-// Initialize OpenAI client
-const openai = new OpenAI({
-  apiKey: OPENAI_CONFIG.apiKey,
-});
+// Initialize OpenAI client dynamically
+function getOpenAIClient(): OpenAI | null {
+  const apiKey = process.env.OPENAI_API_KEY;
+  if (!apiKey) {
+    return null;
+  }
+
+  return new OpenAI({
+    apiKey,
+  });
+}
 
 // ============================================================================
 // PROMPT TEMPLATES
@@ -135,11 +141,7 @@ RESPONSE FORMAT (JSON only):
 /**
  * Generates prompt for follow-up email creation
  */
-function createEmailPrompt(
-  transcript: string,
-  attendees: string[],
-  meetingTitle: string
-): string {
+function createEmailPrompt(transcript: string, attendees: string[], meetingTitle: string): string {
   return `Based on the following meeting transcript, generate a professional follow-up email:
 
 MEETING: ${meetingTitle}
@@ -182,13 +184,13 @@ export async function generateSocialMediaPosts(
     }
 
     const startTime = Date.now();
-    
+
     // Generate posts for each platform in the automation settings
     const allPosts: GeneratePostsResponse['posts'] = [];
-    
+
     // For demo purposes, we'll generate for LinkedIn (most common for financial advisors)
     const platforms = [SocialPlatform.LINKEDIN];
-    
+
     for (const platform of platforms) {
       const prompt = createPostPrompt(
         request.transcript,
@@ -200,38 +202,39 @@ export async function generateSocialMediaPosts(
       );
 
       const response = await withTimeout(
-        retry(
-          async () => {
-            const completion = await openai.chat.completions.create({
-              model: OPENAI_CONFIG.model,
-              messages: [
-                { role: 'system', content: SYSTEM_PROMPT },
-                { role: 'user', content: prompt }
-              ],
-              temperature: 0.7,
-              max_tokens: 1000,
-              response_format: { type: 'json_object' }
-            });
+        retry(async () => {
+          const openai = getOpenAIClient();
+          if (!openai) {
+            throw new Error('OpenAI client not initialized');
+          }
+          const completion = await openai.chat.completions.create({
+            model: OPENAI_CONFIG.model,
+            messages: [
+              { role: 'system', content: SYSTEM_PROMPT },
+              { role: 'user', content: prompt },
+            ],
+            temperature: 0.7,
+            max_tokens: 1000,
+            response_format: { type: 'json_object' },
+          });
 
-            const content = completion.choices[0]?.message?.content;
-            if (!content) {
-              throw new Error('No content received from OpenAI');
-            }
+          const content = completion.choices[0]?.message?.content;
+          if (!content) {
+            throw new Error('No content received from OpenAI');
+          }
 
-            return {
-              content,
-              usage: completion.usage
-            };
-          },
-          OPENAI_CONFIG.maxRetries
-        ),
+          return {
+            content,
+            usage: completion.usage,
+          };
+        }, OPENAI_CONFIG.maxRetries),
         OPENAI_CONFIG.timeout,
         'OpenAI request timed out'
       );
 
       // Parse the JSON response
       const parsedResponse = JSON.parse(response.content);
-      
+
       if (!parsedResponse.posts || !Array.isArray(parsedResponse.posts)) {
         throw new Error('Invalid response format from OpenAI');
       }
@@ -246,10 +249,9 @@ export async function generateSocialMediaPosts(
       metadata: {
         tokensUsed: 0, // Will be calculated from actual usage
         processingTimeMs: processingTime,
-        model: OPENAI_CONFIG.model
-      }
+        model: OPENAI_CONFIG.model,
+      },
     };
-
   } catch (error) {
     const errorDetails = handleError(error);
     throw new Error(`Failed to generate social media posts: ${errorDetails.message}`);
@@ -277,40 +279,40 @@ export async function generateFollowUpEmail(
     const prompt = createEmailPrompt(transcript, attendees, meetingTitle);
 
     const response = await withTimeout(
-      retry(
-        async () => {
-          const completion = await openai.chat.completions.create({
-            model: OPENAI_CONFIG.model,
-            messages: [
-              { role: 'system', content: SYSTEM_PROMPT },
-              { role: 'user', content: prompt }
-            ],
-            temperature: 0.5,
-            max_tokens: 800,
-            response_format: { type: 'json_object' }
-          });
+      retry(async () => {
+        const openai = getOpenAIClient();
+        if (!openai) {
+          throw new Error('OpenAI client not initialized');
+        }
+        const completion = await openai.chat.completions.create({
+          model: OPENAI_CONFIG.model,
+          messages: [
+            { role: 'system', content: SYSTEM_PROMPT },
+            { role: 'user', content: prompt },
+          ],
+          temperature: 0.5,
+          max_tokens: 800,
+          response_format: { type: 'json_object' },
+        });
 
-          const content = completion.choices[0]?.message?.content;
-          if (!content) {
-            throw new Error('No content received from OpenAI');
-          }
+        const content = completion.choices[0]?.message?.content;
+        if (!content) {
+          throw new Error('No content received from OpenAI');
+        }
 
-          return content;
-        },
-        OPENAI_CONFIG.maxRetries
-      ),
+        return content;
+      }, OPENAI_CONFIG.maxRetries),
       OPENAI_CONFIG.timeout,
       'OpenAI email generation timed out'
     );
 
     const parsedResponse = JSON.parse(response);
-    
+
     if (!parsedResponse.email) {
       throw new Error('Invalid email response format from OpenAI');
     }
 
     return parsedResponse.email;
-
   } catch (error) {
     const errorDetails = handleError(error);
     throw new Error(`Failed to generate follow-up email: ${errorDetails.message}`);
@@ -333,22 +335,28 @@ export async function generateMockSocialMediaPosts(
   const mockPosts = [
     {
       platform: SocialPlatform.LINKEDIN,
-      content: "Just wrapped up an insightful client meeting discussing portfolio diversification strategies. Key takeaway: The importance of balancing growth potential with risk management in today's market. Remember, successful investing isn't about timing the market—it's about time in the market. 📈",
-      hashtags: ["#FinancialPlanning", "#InvestmentStrategy", "#WealthManagement"],
-      reasoning: "This post focuses on educational content while highlighting expertise in portfolio management, perfect for LinkedIn's professional audience."
+      content:
+        "Just wrapped up an insightful client meeting discussing portfolio diversification strategies. Key takeaway: The importance of balancing growth potential with risk management in today's market. Remember, successful investing isn't about timing the market—it's about time in the market. 📈",
+      hashtags: ['#FinancialPlanning', '#InvestmentStrategy', '#WealthManagement'],
+      reasoning:
+        "This post focuses on educational content while highlighting expertise in portfolio management, perfect for LinkedIn's professional audience.",
     },
     {
       platform: SocialPlatform.LINKEDIN,
-      content: "Today's client conversation reinforced why regular portfolio reviews are crucial. Markets evolve, life changes, and so should your investment strategy. A well-timed adjustment can make all the difference in achieving your financial goals. What questions should you be asking your advisor? 🤔",
-      hashtags: ["#FinancialAdvisor", "#PortfolioReview", "#ClientSuccess"],
-      reasoning: "Engages the audience with a question while demonstrating the value of ongoing financial advice and relationship management."
+      content:
+        "Today's client conversation reinforced why regular portfolio reviews are crucial. Markets evolve, life changes, and so should your investment strategy. A well-timed adjustment can make all the difference in achieving your financial goals. What questions should you be asking your advisor? 🤔",
+      hashtags: ['#FinancialAdvisor', '#PortfolioReview', '#ClientSuccess'],
+      reasoning:
+        'Engages the audience with a question while demonstrating the value of ongoing financial advice and relationship management.',
     },
     {
       platform: SocialPlatform.LINKEDIN,
-      content: "Grateful for another productive meeting with a long-term client. Watching their financial confidence grow over the years never gets old. It's not just about the numbers—it's about peace of mind and achieving life goals. This is why I love what I do. 💼✨",
-      hashtags: ["#ClientRelationships", "#FinancialConfidence", "#PurposeDriven"],
-      reasoning: "Personal and emotional appeal that showcases the human side of financial advising while maintaining professionalism."
-    }
+      content:
+        "Grateful for another productive meeting with a long-term client. Watching their financial confidence grow over the years never gets old. It's not just about the numbers—it's about peace of mind and achieving life goals. This is why I love what I do. 💼✨",
+      hashtags: ['#ClientRelationships', '#FinancialConfidence', '#PurposeDriven'],
+      reasoning:
+        'Personal and emotional appeal that showcases the human side of financial advising while maintaining professionalism.',
+    },
   ];
 
   return {
@@ -356,8 +364,8 @@ export async function generateMockSocialMediaPosts(
     metadata: {
       tokensUsed: 450,
       processingTimeMs: 1500,
-      model: 'gpt-4-mock'
-    }
+      model: 'gpt-4-mock',
+    },
   };
 }
 
@@ -365,7 +373,7 @@ export async function generateMockSocialMediaPosts(
  * Mock function for email generation during development
  */
 export async function generateMockFollowUpEmail(
-  transcript: string,
+  _transcript: string,
   attendees: string[],
   meetingTitle: string
 ): Promise<{
@@ -392,12 +400,13 @@ I look forward to continuing our partnership and helping you build the financial
 Best regards,
 Your Financial Advisor`,
     actionItems: [
-      "Review updated portfolio allocation proposal",
-      "Schedule quarterly review meeting",
-      "Provide additional documentation for account setup",
-      "Research tax-advantaged investment options"
+      'Review updated portfolio allocation proposal',
+      'Schedule quarterly review meeting',
+      'Provide additional documentation for account setup',
+      'Research tax-advantaged investment options',
     ],
-    nextSteps: "I'll prepare the detailed portfolio recommendations we discussed and send them to you by Friday. We can schedule a follow-up call next week to review everything in detail."
+    nextSteps:
+      "I'll prepare the detailed portfolio recommendations we discussed and send them to you by Friday. We can schedule a follow-up call next week to review everything in detail.",
   };
 }
 
@@ -409,17 +418,19 @@ Your Financial Advisor`,
  * Validates OpenAI API configuration
  */
 export function validateOpenAIConfig(): { isValid: boolean; error?: string } {
-  if (!OPENAI_CONFIG.apiKey) {
+  const apiKey = process.env.OPENAI_API_KEY;
+
+  if (!apiKey) {
     return {
       isValid: false,
-      error: 'OPENAI_API_KEY environment variable is not set'
+      error: 'OPENAI_API_KEY environment variable is not set',
     };
   }
 
-  if (!OPENAI_CONFIG.apiKey.startsWith('sk-')) {
+  if (!apiKey.startsWith('sk-')) {
     return {
       isValid: false,
-      error: 'Invalid OpenAI API key format'
+      error: 'Invalid OpenAI API key format',
     };
   }
 
@@ -431,7 +442,7 @@ export function validateOpenAIConfig(): { isValid: boolean; error?: string } {
  */
 export function getPostGenerationFunction() {
   const config = validateOpenAIConfig();
-  
+
   if (config.isValid) {
     return generateSocialMediaPosts;
   } else {
@@ -445,7 +456,7 @@ export function getPostGenerationFunction() {
  */
 export function getEmailGenerationFunction() {
   const config = validateOpenAIConfig();
-  
+
   if (config.isValid) {
     return generateFollowUpEmail;
   } else {
