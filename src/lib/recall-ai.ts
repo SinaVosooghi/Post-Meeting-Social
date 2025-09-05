@@ -1,0 +1,473 @@
+/**
+ * Recall.ai Integration
+ * Post-Meeting Social Media Content Generator
+ * 
+ * Handles meeting bot scheduling, transcript retrieval, and recording management
+ */
+
+import type { 
+  RecallBot, 
+  BotStatus, 
+  BotConfig,
+  MeetingTranscript,
+  RecallApiResponse 
+} from '@/types';
+
+// ============================================================================
+// RECALL.AI CONFIGURATION
+// ============================================================================
+
+const RECALL_API_CONFIG = {
+  baseUrl: 'https://api.recall.ai/api/v1',
+  apiKey: process.env.RECALL_AI_API_KEY,
+  defaultConfig: {
+    record_audio: true,
+    record_video: false,
+    record_screen: false,
+    transcription: {
+      provider: 'assembly_ai',
+      language: 'en',
+      detect_language: true,
+      format_text: true,
+      include_speaker_labels: true,
+    },
+    webhook_url: process.env.NEXTAUTH_URL + '/api/webhooks/recall',
+  },
+};
+
+// ============================================================================
+// RECALL.AI CLIENT
+// ============================================================================
+
+/**
+ * Makes authenticated request to Recall.ai API
+ */
+async function recallApiRequest<T>(
+  endpoint: string,
+  options: RequestInit = {}
+): Promise<T> {
+  const url = `${RECALL_API_CONFIG.baseUrl}${endpoint}`;
+  
+  const response = await fetch(url, {
+    ...options,
+    headers: {
+      'Authorization': `Token ${RECALL_API_CONFIG.apiKey}`,
+      'Content-Type': 'application/json',
+      ...options.headers,
+    },
+  });
+
+  if (!response.ok) {
+    const error = await response.text();
+    throw new Error(`Recall.ai API error (${response.status}): ${error}`);
+  }
+
+  return response.json();
+}
+
+// ============================================================================
+// BOT MANAGEMENT
+// ============================================================================
+
+/**
+ * Creates and schedules a meeting bot for a specific meeting
+ */
+export async function scheduleMeetingBot(
+  meetingUrl: string,
+  config: Partial<BotConfig> = {}
+): Promise<RecallBot> {
+  try {
+    // For development/demo - return mock bot
+    if (!RECALL_API_CONFIG.apiKey || process.env.NODE_ENV === 'development') {
+      return createMockBot(meetingUrl, config);
+    }
+
+    const botConfig = {
+      ...RECALL_API_CONFIG.defaultConfig,
+      meeting_url: meetingUrl,
+      bot_name: config.botName || 'Post-Meeting Content Bot',
+      ...config,
+    };
+
+    const response = await recallApiRequest<RecallApiResponse<RecallBot>>('/bots', {
+      method: 'POST',
+      body: JSON.stringify(botConfig),
+    });
+
+    return {
+      id: response.data.id,
+      meetingUrl,
+      status: response.data.status,
+      botName: botConfig.bot_name,
+      scheduledAt: new Date(response.data.created_at),
+      startedAt: response.data.started_at ? new Date(response.data.started_at) : null,
+      endedAt: response.data.ended_at ? new Date(response.data.ended_at) : null,
+      recordingUrl: response.data.recording_url || null,
+      transcriptUrl: response.data.transcript_url || null,
+      config: {
+        recordAudio: botConfig.record_audio,
+        recordVideo: botConfig.record_video,
+        recordScreen: botConfig.record_screen,
+        transcriptionEnabled: true,
+        botName: botConfig.bot_name,
+        webhookUrl: botConfig.webhook_url,
+      },
+      metadata: {
+        meetingPlatform: detectMeetingPlatform(meetingUrl),
+        duration: null,
+        participantCount: null,
+        transcriptWordCount: null,
+      },
+    };
+  } catch (error) {
+    console.error('Error scheduling meeting bot:', error);
+    throw new Error(`Failed to schedule meeting bot: ${error instanceof Error ? error.message : 'Unknown error'}`);
+  }
+}
+
+/**
+ * Gets the status and details of a meeting bot
+ */
+export async function getBotStatus(botId: string): Promise<RecallBot> {
+  try {
+    // For development/demo - return mock bot status
+    if (!RECALL_API_CONFIG.apiKey || process.env.NODE_ENV === 'development') {
+      return getMockBotStatus(botId);
+    }
+
+    const response = await recallApiRequest<RecallApiResponse<any>>(`/bots/${botId}`);
+    
+    return {
+      id: response.data.id,
+      meetingUrl: response.data.meeting_url,
+      status: response.data.status,
+      botName: response.data.bot_name || 'Meeting Bot',
+      scheduledAt: new Date(response.data.created_at),
+      startedAt: response.data.started_at ? new Date(response.data.started_at) : null,
+      endedAt: response.data.ended_at ? new Date(response.data.ended_at) : null,
+      recordingUrl: response.data.recording_url || null,
+      transcriptUrl: response.data.transcript_url || null,
+      config: {
+        recordAudio: response.data.record_audio || true,
+        recordVideo: response.data.record_video || false,
+        recordScreen: response.data.record_screen || false,
+        transcriptionEnabled: true,
+        botName: response.data.bot_name || 'Meeting Bot',
+        webhookUrl: response.data.webhook_url || null,
+      },
+      metadata: {
+        meetingPlatform: detectMeetingPlatform(response.data.meeting_url),
+        duration: response.data.duration || null,
+        participantCount: response.data.participant_count || null,
+        transcriptWordCount: response.data.transcript_word_count || null,
+      },
+    };
+  } catch (error) {
+    console.error('Error getting bot status:', error);
+    throw new Error(`Failed to get bot status: ${error instanceof Error ? error.message : 'Unknown error'}`);
+  }
+}
+
+/**
+ * Cancels a scheduled meeting bot
+ */
+export async function cancelMeetingBot(botId: string): Promise<void> {
+  try {
+    // For development/demo - just log the cancellation
+    if (!RECALL_API_CONFIG.apiKey || process.env.NODE_ENV === 'development') {
+      console.log(`Mock: Cancelled meeting bot ${botId}`);
+      return;
+    }
+
+    await recallApiRequest(`/bots/${botId}`, {
+      method: 'DELETE',
+    });
+  } catch (error) {
+    console.error('Error cancelling meeting bot:', error);
+    throw new Error(`Failed to cancel meeting bot: ${error instanceof Error ? error.message : 'Unknown error'}`);
+  }
+}
+
+/**
+ * Lists all bots for the current user
+ */
+export async function listMeetingBots(
+  options: {
+    limit?: number;
+    status?: BotStatus;
+    dateFrom?: Date;
+    dateTo?: Date;
+  } = {}
+): Promise<RecallBot[]> {
+  try {
+    // For development/demo - return mock bots
+    if (!RECALL_API_CONFIG.apiKey || process.env.NODE_ENV === 'development') {
+      return getMockBotList(options);
+    }
+
+    const params = new URLSearchParams();
+    if (options.limit) params.append('limit', options.limit.toString());
+    if (options.status) params.append('status', options.status);
+    if (options.dateFrom) params.append('created_after', options.dateFrom.toISOString());
+    if (options.dateTo) params.append('created_before', options.dateTo.toISOString());
+
+    const response = await recallApiRequest<RecallApiResponse<any[]>>(
+      `/bots?${params.toString()}`
+    );
+
+    return response.data.map(bot => ({
+      id: bot.id,
+      meetingUrl: bot.meeting_url,
+      status: bot.status,
+      botName: bot.bot_name || 'Meeting Bot',
+      scheduledAt: new Date(bot.created_at),
+      startedAt: bot.started_at ? new Date(bot.started_at) : null,
+      endedAt: bot.ended_at ? new Date(bot.ended_at) : null,
+      recordingUrl: bot.recording_url || null,
+      transcriptUrl: bot.transcript_url || null,
+      config: {
+        recordAudio: bot.record_audio || true,
+        recordVideo: bot.record_video || false,
+        recordScreen: bot.record_screen || false,
+        transcriptionEnabled: true,
+        botName: bot.bot_name || 'Meeting Bot',
+        webhookUrl: bot.webhook_url || null,
+      },
+      metadata: {
+        meetingPlatform: detectMeetingPlatform(bot.meeting_url),
+        duration: bot.duration || null,
+        participantCount: bot.participant_count || null,
+        transcriptWordCount: bot.transcript_word_count || null,
+      },
+    }));
+  } catch (error) {
+    console.error('Error listing meeting bots:', error);
+    throw new Error(`Failed to list meeting bots: ${error instanceof Error ? error.message : 'Unknown error'}`);
+  }
+}
+
+// ============================================================================
+// TRANSCRIPT OPERATIONS
+// ============================================================================
+
+/**
+ * Retrieves the transcript for a completed meeting bot
+ */
+export async function getMeetingTranscript(botId: string): Promise<MeetingTranscript> {
+  try {
+    // For development/demo - return mock transcript
+    if (!RECALL_API_CONFIG.apiKey || process.env.NODE_ENV === 'development') {
+      return getMockTranscript(botId);
+    }
+
+    const response = await recallApiRequest<RecallApiResponse<any>>(`/bots/${botId}/transcript`);
+    
+    return {
+      botId,
+      meetingId: response.data.meeting_id,
+      content: response.data.transcript,
+      speakers: response.data.speakers || [],
+      segments: response.data.segments?.map((segment: any) => ({
+        speaker: segment.speaker,
+        text: segment.text,
+        startTime: segment.start_time,
+        endTime: segment.end_time,
+        confidence: segment.confidence || 0.95,
+      })) || [],
+      summary: response.data.summary || null,
+      keyPoints: response.data.key_points || [],
+      actionItems: response.data.action_items || [],
+      duration: response.data.duration || 0,
+      wordCount: response.data.word_count || 0,
+      language: response.data.language || 'en',
+      createdAt: new Date(response.data.created_at),
+    };
+  } catch (error) {
+    console.error('Error getting meeting transcript:', error);
+    throw new Error(`Failed to get meeting transcript: ${error instanceof Error ? error.message : 'Unknown error'}`);
+  }
+}
+
+// ============================================================================
+// UTILITY FUNCTIONS
+// ============================================================================
+
+/**
+ * Detects meeting platform from URL
+ */
+function detectMeetingPlatform(meetingUrl: string): 'zoom' | 'google-meet' | 'microsoft-teams' | 'webex' | 'other' {
+  if (meetingUrl.includes('zoom.us')) return 'zoom';
+  if (meetingUrl.includes('meet.google.com')) return 'google-meet';
+  if (meetingUrl.includes('teams.microsoft.com')) return 'microsoft-teams';
+  if (meetingUrl.includes('webex.com')) return 'webex';
+  return 'other';
+}
+
+// ============================================================================
+// MOCK DATA FOR DEVELOPMENT
+// ============================================================================
+
+/**
+ * Creates a mock bot for development
+ */
+function createMockBot(meetingUrl: string, config: Partial<BotConfig>): RecallBot {
+  const botId = `mock-bot-${Date.now()}`;
+  
+  return {
+    id: botId,
+    meetingUrl,
+    status: 'scheduled' as BotStatus,
+    botName: config.botName || 'Post-Meeting Content Bot',
+    scheduledAt: new Date(),
+    startedAt: null,
+    endedAt: null,
+    recordingUrl: null,
+    transcriptUrl: null,
+    config: {
+      recordAudio: config.recordAudio ?? true,
+      recordVideo: config.recordVideo ?? false,
+      recordScreen: config.recordScreen ?? false,
+      transcriptionEnabled: true,
+      botName: config.botName || 'Post-Meeting Content Bot',
+      webhookUrl: RECALL_API_CONFIG.defaultConfig.webhook_url,
+    },
+    metadata: {
+      meetingPlatform: detectMeetingPlatform(meetingUrl),
+      duration: null,
+      participantCount: null,
+      transcriptWordCount: null,
+    },
+  };
+}
+
+/**
+ * Gets mock bot status
+ */
+function getMockBotStatus(botId: string): RecallBot {
+  // Simulate different statuses based on bot age
+  const isOld = botId.includes('old');
+  const isActive = botId.includes('active');
+  
+  let status: BotStatus = 'scheduled';
+  let startedAt: Date | null = null;
+  let endedAt: Date | null = null;
+  let recordingUrl: string | null = null;
+  let transcriptUrl: string | null = null;
+
+  if (isActive) {
+    status = 'recording';
+    startedAt = new Date(Date.now() - 30 * 60 * 1000); // 30 minutes ago
+  } else if (isOld) {
+    status = 'completed';
+    startedAt = new Date(Date.now() - 2 * 60 * 60 * 1000); // 2 hours ago
+    endedAt = new Date(Date.now() - 60 * 60 * 1000); // 1 hour ago
+    recordingUrl = `https://mock-recordings.recall.ai/${botId}.mp4`;
+    transcriptUrl = `https://mock-transcripts.recall.ai/${botId}.json`;
+  }
+
+  return {
+    id: botId,
+    meetingUrl: 'https://zoom.us/j/1234567890',
+    status,
+    botName: 'Post-Meeting Content Bot',
+    scheduledAt: new Date(Date.now() - 3 * 60 * 60 * 1000), // 3 hours ago
+    startedAt,
+    endedAt,
+    recordingUrl,
+    transcriptUrl,
+    config: {
+      recordAudio: true,
+      recordVideo: false,
+      recordScreen: false,
+      transcriptionEnabled: true,
+      botName: 'Post-Meeting Content Bot',
+      webhookUrl: RECALL_API_CONFIG.defaultConfig.webhook_url,
+    },
+    metadata: {
+      meetingPlatform: 'zoom',
+      duration: endedAt ? 45 : null,
+      participantCount: endedAt ? 3 : null,
+      transcriptWordCount: endedAt ? 2500 : null,
+    },
+  };
+}
+
+/**
+ * Gets mock bot list
+ */
+function getMockBotList(options: any): RecallBot[] {
+  const bots = [
+    getMockBotStatus('mock-bot-old-1'),
+    getMockBotStatus('mock-bot-active-2'),
+    getMockBotStatus('mock-bot-scheduled-3'),
+  ];
+
+  if (options.status) {
+    return bots.filter(bot => bot.status === options.status);
+  }
+
+  return bots.slice(0, options.limit || 10);
+}
+
+/**
+ * Gets mock transcript
+ */
+function getMockTranscript(botId: string): MeetingTranscript {
+  return {
+    botId,
+    meetingId: `meeting-${botId}`,
+    content: `Meeting: Q4 Portfolio Review with Sarah Johnson
+
+Attendees: John Smith (Financial Advisor), Sarah Johnson (Client)
+
+Key Discussion Points:
+- Reviewed portfolio performance over the past quarter
+- Discussed market volatility and its impact on long-term goals
+- Explored opportunities for tax-loss harvesting
+- Addressed concerns about inflation and interest rate changes
+- Reviewed retirement planning timeline and adjusted contributions
+- Discussed diversification strategies across asset classes
+
+Action Items:
+- Rebalance portfolio to target allocation
+- Increase 401k contribution by 2%
+- Schedule next review for February
+- Research ESG investment options
+
+Client expressed satisfaction with current strategy and confidence in long-term approach. Meeting concluded with clear next steps and timeline for implementation.`,
+    speakers: ['John Smith', 'Sarah Johnson'],
+    segments: [
+      {
+        speaker: 'John Smith',
+        text: 'Good morning Sarah, thanks for joining me today. Let\'s review your portfolio performance.',
+        startTime: 0,
+        endTime: 5,
+        confidence: 0.98,
+      },
+      {
+        speaker: 'Sarah Johnson',
+        text: 'Good morning John. I\'m looking forward to seeing how we\'ve done this quarter.',
+        startTime: 5,
+        endTime: 10,
+        confidence: 0.96,
+      },
+    ],
+    summary: 'Quarterly portfolio review meeting discussing performance, market conditions, and strategy adjustments.',
+    keyPoints: [
+      'Portfolio performed well despite market volatility',
+      'Opportunity for tax-loss harvesting identified',
+      'Client comfortable with current investment strategy',
+      'Retirement timeline on track with increased contributions',
+    ],
+    actionItems: [
+      'Rebalance portfolio to target allocation',
+      'Increase 401k contribution by 2%',
+      'Schedule next review for February',
+      'Research ESG investment options',
+    ],
+    duration: 2700, // 45 minutes
+    wordCount: 2500,
+    language: 'en',
+    createdAt: new Date(Date.now() - 60 * 60 * 1000), // 1 hour ago
+  };
+}
