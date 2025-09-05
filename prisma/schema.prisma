@@ -1,0 +1,240 @@
+// Prisma Schema for Post-Meeting Social Media Content Generator
+// This schema defines all database models with strict TypeScript integration
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================================================
+// USER MANAGEMENT
+// ============================================================================
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String?
+  image     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  accounts    Account[]
+  sessions    Session[]
+  meetings    Meeting[]
+  automations Automation[]
+  settings    UserSettings?
+
+  @@map("users")
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@map("accounts")
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+  @@map("verification_tokens")
+}
+
+// ============================================================================
+// MEETING MANAGEMENT
+// ============================================================================
+
+model Meeting {
+  id               String            @id @default(cuid())
+  userId           String
+  calendarEventId  String
+  title            String
+  description      String?
+  startTime        DateTime
+  endTime          DateTime
+  platform         MeetingPlatform   @default(ZOOM)
+  meetingUrl       String
+  recallBotId      String?
+  transcript       String?
+  transcriptStatus TranscriptStatus  @default(PENDING)
+  followUpEmail    String?
+  botEnabled       Boolean           @default(false)
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+
+  // Relations
+  user           User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  attendees      MeetingAttendee[]
+  generatedPosts GeneratedPost[]
+
+  @@unique([userId, calendarEventId])
+  @@map("meetings")
+}
+
+model MeetingAttendee {
+  id             String                  @id @default(cuid())
+  meetingId      String
+  name           String
+  email          String
+  isOrganizer    Boolean                 @default(false)
+  responseStatus AttendeeResponseStatus  @default(NEEDS_ACTION)
+
+  // Relations
+  meeting Meeting @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+
+  @@unique([meetingId, email])
+  @@map("meeting_attendees")
+}
+
+// ============================================================================
+// CONTENT GENERATION
+// ============================================================================
+
+model GeneratedPost {
+  id           String        @id @default(cuid())
+  meetingId    String
+  platform     SocialPlatform
+  content      String
+  hashtags     String        // JSON array of hashtags
+  status       PostStatus    @default(DRAFT)
+  publishedAt  DateTime?
+  automationId String?
+  reasoning    String?       // AI reasoning for the post
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  // Relations
+  meeting    Meeting     @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+  automation Automation? @relation(fields: [automationId], references: [id])
+
+  @@map("generated_posts")
+}
+
+model Automation {
+  id          String              @id @default(cuid())
+  userId      String
+  name        String
+  description String?
+  platform    SocialPlatform
+  isActive    Boolean             @default(true)
+  prompt      String
+  settings    String              // JSON string of AutomationSettings
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+
+  // Relations
+  user           User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  generatedPosts GeneratedPost[]
+
+  @@unique([userId, platform])
+  @@map("automations")
+}
+
+// ============================================================================
+// USER SETTINGS
+// ============================================================================
+
+model UserSettings {
+  id                       String   @id @default(cuid())
+  userId                   String   @unique
+  botJoinMinutesBefore     Int      @default(5)
+  autoGeneratePosts        Boolean  @default(true)
+  autoPublishPosts         Boolean  @default(false)
+  defaultPrompt            String   @default("Generate professional social media posts based on this meeting transcript. Focus on key insights and actionable takeaways.")
+  notificationPreferences  String   // JSON string of NotificationPreferences
+  createdAt                DateTime @default(now())
+  updatedAt                DateTime @updatedAt
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_settings")
+}
+
+// ============================================================================
+// ENUMS
+// ============================================================================
+
+enum MeetingPlatform {
+  ZOOM
+  GOOGLE_MEET
+  MICROSOFT_TEAMS
+  OTHER
+
+  @@map("meeting_platform")
+}
+
+enum TranscriptStatus {
+  PENDING
+  RECORDING
+  PROCESSING
+  COMPLETED
+  FAILED
+  NOT_AVAILABLE
+
+  @@map("transcript_status")
+}
+
+enum AttendeeResponseStatus {
+  ACCEPTED
+  DECLINED
+  TENTATIVE
+  NEEDS_ACTION
+
+  @@map("attendee_response_status")
+}
+
+enum SocialPlatform {
+  LINKEDIN
+  FACEBOOK
+  TWITTER
+
+  @@map("social_platform")
+}
+
+enum PostStatus {
+  DRAFT
+  SCHEDULED
+  PUBLISHED
+  FAILED
+
+  @@map("post_status")
+}
