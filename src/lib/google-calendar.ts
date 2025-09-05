@@ -8,10 +8,9 @@
 import { google } from 'googleapis';
 import type { 
   CalendarEvent, 
-  CalendarProvider, 
-  OAuthProvider,
   GoogleCalendarConfig 
 } from '@/types';
+import { CalendarProvider } from '@/types';
 
 // ============================================================================
 // GOOGLE CALENDAR CONFIGURATION
@@ -78,14 +77,19 @@ export async function getUpcomingEvents(
       calendarId = 'primary'
     } = options;
 
-    const response = await calendar.events.list({
+    const listParams: any = {
       calendarId,
       timeMin: timeMin.toISOString(),
-      timeMax: timeMax?.toISOString(),
       maxResults,
       singleEvents: true,
       orderBy: 'startTime',
-    });
+    };
+    
+    if (timeMax) {
+      listParams.timeMax = timeMax.toISOString();
+    }
+
+    const response = await calendar.events.list(listParams);
 
     const events = response.data.items || [];
 
@@ -97,7 +101,7 @@ export async function getUpcomingEvents(
       endTime: new Date(event.end?.dateTime || event.end?.date!),
       attendees: event.attendees?.map(attendee => ({
         email: attendee.email!,
-        name: attendee.displayName || attendee.email!.split('@')[0],
+        name: attendee.displayName || attendee.email!.split('@')[0] || 'Unknown',
         responseStatus: attendee.responseStatus as 'needsAction' | 'declined' | 'tentative' | 'accepted',
         isOrganizer: attendee.organizer || false,
       })) || [],
@@ -173,7 +177,7 @@ export async function createCalendarEvent(
       endTime: new Date(event.end?.dateTime!),
       attendees: event.attendees?.map(attendee => ({
         email: attendee.email!,
-        name: attendee.displayName || attendee.email!.split('@')[0],
+        name: attendee.displayName || attendee.email!.split('@')[0] || 'Unknown',
         responseStatus: attendee.responseStatus as 'needsAction' | 'declined' | 'tentative' | 'accepted',
         isOrganizer: attendee.organizer || false,
       })) || [],
@@ -212,12 +216,6 @@ export async function updateCalendarEvent(
   try {
     const calendar = createGoogleCalendarClient(accessToken);
     
-    // First, get the existing event
-    const existingEvent = await calendar.events.get({
-      calendarId,
-      eventId,
-    });
-
     // Prepare update data
     const updateData: any = {};
     
@@ -259,7 +257,7 @@ export async function updateCalendarEvent(
       endTime: new Date(event.end?.dateTime || event.end?.date!),
       attendees: event.attendees?.map(attendee => ({
         email: attendee.email!,
-        name: attendee.displayName || attendee.email!.split('@')[0],
+        name: attendee.displayName || attendee.email!.split('@')[0] || 'Unknown',
         responseStatus: attendee.responseStatus as 'needsAction' | 'declined' | 'tentative' | 'accepted',
         isOrganizer: attendee.organizer || false,
       })) || [],

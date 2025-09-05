@@ -11,9 +11,7 @@ import { auth } from '@/lib/auth';
 import { 
   generateLinkedInAuthUrl,
   exchangeLinkedInCode,
-  postToLinkedIn,
   getLinkedInProfile,
-  validateLinkedInToken,
   optimizeContentForLinkedIn,
   validateLinkedInContent,
   createMockLinkedInPost,
@@ -263,7 +261,7 @@ async function handlePublishPost(
   },
   userId: string
 ) {
-  const { content, hashtags = [], linkUrl, meetingId } = params;
+  const { content, hashtags = [] } = params;
 
   // Rate limiting check
   const rateLimiter = LinkedInRateLimiter.getInstance();
@@ -380,7 +378,7 @@ async function handleOptimizeContent(params: {
 }) {
   const optimized = optimizeContentForLinkedIn({
     text: params.content,
-    hashtags: params.hashtags,
+    hashtags: params.hashtags || [],
     platform: 'linkedin',
   });
   
