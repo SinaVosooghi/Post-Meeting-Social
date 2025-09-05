@@ -8,6 +8,7 @@
 'use client';
 
 import { useSearchParams } from 'next/navigation';
+import { Suspense } from 'react';
 import Link from 'next/link';
 
 const ERROR_MESSAGES = {
@@ -17,7 +18,7 @@ const ERROR_MESSAGES = {
   Default: 'An unexpected error occurred during authentication.',
 } as const;
 
-export default function AuthErrorPage() {
+function AuthErrorContent() {
   const searchParams = useSearchParams();
   const error = searchParams?.get('error') as keyof typeof ERROR_MESSAGES;
 
@@ -95,5 +96,13 @@ export default function AuthErrorPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function AuthError() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <AuthErrorContent />
+    </Suspense>
   );
 }

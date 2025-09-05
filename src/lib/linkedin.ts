@@ -8,11 +8,9 @@
 
 import type { 
   SocialMediaToken, 
-  SocialMediaPost, 
-  PublishingAttempt,
-  SocialEngagement,
-  ApiResponse 
+  SocialEngagement
 } from '@/types/master-interfaces';
+import { SocialPlatform } from '@/types/master-interfaces';
 
 // ============================================================================
 // LINKEDIN CONFIGURATION
@@ -65,7 +63,7 @@ export function generateLinkedInAuthUrl(state: string): string {
  */
 export async function exchangeLinkedInCode(
   code: string,
-  state: string
+  _state: string
 ): Promise<{
   accessToken: string;
   expiresIn: number;
@@ -435,13 +433,13 @@ export class LinkedInRateLimiter {
 /**
  * Handles LinkedIn API errors with retry logic
  */
-export function handleLinkedInError(error: any, attempt: number): {
+export function handleLinkedInError(error: unknown, attempt: number): {
   shouldRetry: boolean;
   retryAfter: number; // in milliseconds
   errorType: 'rate_limit' | 'auth_error' | 'content_rejected' | 'network_error' | 'unknown';
 } {
-  const errorMessage = error?.message || '';
-  const statusCode = error?.response?.status;
+  const errorMessage = (error as Error)?.message || '';
+  const statusCode = (error as { response?: { status?: number } })?.response?.status;
 
   // Rate limiting
   if (statusCode === 429) {
@@ -471,7 +469,7 @@ export function handleLinkedInError(error: any, attempt: number): {
   }
 
   // Network errors (temporary)
-  if (statusCode >= 500 || !statusCode) {
+  if ((statusCode && statusCode >= 500) || !statusCode) {
     return {
       shouldRetry: attempt < 3,
       retryAfter: Math.pow(2, attempt) * 1000, // Exponential backoff
@@ -603,7 +601,7 @@ export function validateLinkedInContent(content: string): {
  */
 export const MOCK_LINKEDIN_TOKEN: Partial<SocialMediaToken> = {
   id: 'mock-linkedin-token',
-  platform: 'linkedin',
+  platform: SocialPlatform.LINKEDIN,
   tokenType: 'access',
   encryptedToken: encryptToken('mock-access-token-linkedin'),
   tokenScope: ['openid', 'profile', 'email', 'w_member_social'],
@@ -622,8 +620,8 @@ export const MOCK_LINKEDIN_TOKEN: Partial<SocialMediaToken> = {
  * Mock LinkedIn post for development
  */
 export async function createMockLinkedInPost(
-  content: string,
-  hashtags: string[] = []
+  _content: string,
+  _hashtags: string[] = []
 ): Promise<{
   postId: string;
   postUrl: string;

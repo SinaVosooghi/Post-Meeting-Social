@@ -6,14 +6,13 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
+import { auth } from '@/lib/auth';
 import { 
   getUpcomingEvents, 
   getMockCalendarEvents,
   validateGoogleCalendarAccess 
 } from '@/lib/google-calendar';
-import type { CalendarEvent } from '@/types';
+// CalendarEvent type imported but not used in this demo version
 
 // ============================================================================
 // API ROUTE HANDLER
@@ -22,7 +21,7 @@ import type { CalendarEvent } from '@/types';
 export async function GET(request: NextRequest) {
   try {
     // Check authentication
-    const session = await getServerSession(authOptions);
+    const session = await auth();
     if (!session?.user?.id) {
       return NextResponse.json(
         {
@@ -144,7 +143,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     // Check authentication
-    const session = await getServerSession(authOptions);
+    const session = await auth();
     if (!session?.user?.id) {
       return NextResponse.json(
         {
@@ -165,7 +164,6 @@ export async function POST(request: NextRequest) {
     switch (action) {
       case 'fetch':
         // Same logic as GET request
-        const maxResults = params.maxResults || 20;
         const useMockData = params.useMockData || !process.env.GOOGLE_CLIENT_ID;
 
         if (useMockData) {

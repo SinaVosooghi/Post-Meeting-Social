@@ -283,7 +283,7 @@ export interface PublishingAttempt {
   readonly attemptNumber: number;
   readonly attemptedAt: Date;
   readonly status: 'success' | 'failed' | 'rate_limited' | 'auth_error' | 'content_rejected';
-  readonly responseData?: any;
+  readonly responseData?: Record<string, unknown>;
   readonly errorMessage?: string;
   readonly retryAfter?: Date;
 }
@@ -1118,7 +1118,7 @@ export interface ApiResponse<T> {
 export interface ApiError {
   readonly message: string;
   readonly code: string;
-  readonly details?: any;
+  readonly details?: Record<string, unknown>;
   readonly timestamp: string;
   readonly requestId: string;
   readonly stack?: string; // Only in development
