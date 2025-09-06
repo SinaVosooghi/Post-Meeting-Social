@@ -14,6 +14,13 @@ import {
   MeetingPlatform,
   RecordingStatus,
   TranscriptStatus,
+  RiskLevel,
+  RiskTolerance,
+  FirmType,
+  ComplianceFramework,
+  RelationshipType,
+  RiskProfile,
+  InvestmentExperience,
 } from '@/types/master-interfaces';
 import { z } from 'zod';
 
@@ -95,9 +102,9 @@ export async function POST(request: NextRequest) {
       // Client relationship context
       clientRelationship: {
         clientId: 'client-123',
-        relationshipType: 'client',
-        riskProfile: 'moderate',
-        investmentExperience: 'intermediate',
+        relationshipType: RelationshipType.CLIENT,
+        riskProfile: RiskProfile.MODERATE,
+        investmentExperience: InvestmentExperience.INTERMEDIATE,
         regulatoryStatus: 'retail',
         communicationPreferences: {
           allowSocialMedia: true,
@@ -114,7 +121,7 @@ export async function POST(request: NextRequest) {
         requiresLegalReview: false,
         hasInvestmentAdvice: true,
         needsDisclaimer: true,
-        riskLevel: 'medium',
+        riskLevel: RiskLevel.MEDIUM,
         topicsDiscussed: ['portfolio review', 'market outlook', 'investment strategy'],
       },
 
@@ -145,7 +152,7 @@ export async function POST(request: NextRequest) {
           crd: '123456',
         },
         complianceSettings: {
-          riskToleranceThreshold: 'medium',
+          riskToleranceThreshold: RiskTolerance.MEDIUM,
           requiredDisclosures: ['investment disclaimer'],
           approvedHashtags: ['WealthManagement', 'FinancialPlanning'],
           restrictedTopics: ['specific stocks', 'guarantees'],
@@ -162,10 +169,10 @@ export async function POST(request: NextRequest) {
           lastComplianceReview: new Date(),
         },
         firmSettings: {
-          firmType: 'ria',
+          firmType: FirmType.RIA,
           aum: 500000000,
           clientCount: 200,
-          complianceFramework: 'multiple',
+          complianceFramework: ComplianceFramework.MULTIPLE,
         },
         createdAt: new Date(),
         updatedAt: new Date(),
