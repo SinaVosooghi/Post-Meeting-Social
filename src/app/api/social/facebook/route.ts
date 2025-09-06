@@ -1,8 +1,8 @@
 /**
- * LinkedIn Social Media API Endpoint
- * POST /api/social/linkedin - LinkedIn OAuth and publishing
+ * Facebook Social Media API Endpoint
+ * POST /api/social/facebook - Facebook OAuth and publishing
  *
- * Handles LinkedIn authentication, token management, and content publishing
+ * Handles Facebook authentication, token management, and content publishing
  * Aligned with SocialMediaToken and SocialMediaPost interfaces
  */
 
@@ -10,16 +10,17 @@ import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import {
-  generateLinkedInAuthUrl,
-  exchangeLinkedInCode,
-  getLinkedInProfile,
-  optimizeContentForLinkedIn,
-  validateLinkedInContent,
-  createMockLinkedInPost,
-  MOCK_LINKEDIN_PROFILE,
-  LinkedInRateLimiter,
-} from '@/lib/linkedin';
+  generateFacebookAuthUrl,
+  exchangeFacebookCode,
+  getFacebookProfile,
+  optimizeContentForFacebook,
+  validateFacebookContent,
+  createMockFacebookPost,
+  MOCK_FACEBOOK_PROFILE,
+  FacebookRateLimiter,
+} from '@/lib/facebook';
 import { storeSocialToken, getSocialToken } from '@/lib/social-tokens';
+import { SocialPlatform } from '@/types/master-interfaces';
 
 // ============================================================================
 // API ROUTE HANDLERS
@@ -40,7 +41,7 @@ export async function GET(request: NextRequest) {
     // Generate OAuth URL
     if (action === 'auth') {
       const authState = crypto.randomUUID();
-      const authUrl = generateLinkedInAuthUrl(authState);
+      const authUrl = generateFacebookAuthUrl(authState);
 
       return NextResponse.json({
         success: true,
@@ -55,9 +56,38 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    // Get profile information
-    if (action === 'profile') {
-      return await handleGetProfile(request);
+    // Get connection status
+    if (action === 'status') {
+      const session = await auth();
+      if (!session?.user?.id) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: {
+              message: 'Authentication required',
+              code: 'UNAUTHORIZED',
+              timestamp: new Date().toISOString(),
+            },
+          },
+          { status: 401 }
+        );
+      }
+
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-call
+      const hasAccess = (await hasValidToken(session.user.id, SocialPlatform.FACEBOOK)) as boolean;
+
+      return NextResponse.json({
+        success: true,
+        data: {
+          connected: hasAccess,
+          platform: 'FACEBOOK',
+          userId: session.user.id,
+        },
+        metadata: {
+          timestamp: new Date().toISOString(),
+          requestId: crypto.randomUUID(),
+        },
+      });
     }
 
     return NextResponse.json(
@@ -72,14 +102,14 @@ export async function GET(request: NextRequest) {
       { status: 400 }
     );
   } catch (error) {
-    console.error('LinkedIn API error:', error);
+    console.error('Facebook API error:', error);
 
     return NextResponse.json(
       {
         success: false,
         error: {
-          message: error instanceof Error ? error.message : 'LinkedIn API error',
-          code: 'LINKEDIN_API_ERROR',
+          message: error instanceof Error ? error.message : 'Facebook API error',
+          code: 'FACEBOOK_API_ERROR',
           timestamp: new Date().toISOString(),
         },
       },
@@ -142,14 +172,14 @@ export async function POST(request: NextRequest) {
         );
     }
   } catch (error) {
-    console.error('LinkedIn POST API error:', error);
+    console.error('Facebook POST API error:', error);
 
     return NextResponse.json(
       {
         success: false,
         error: {
-          message: error instanceof Error ? error.message : 'Failed to process LinkedIn request',
-          code: 'LINKEDIN_POST_ERROR',
+          message: error instanceof Error ? error.message : 'Failed to process Facebook request',
+          code: 'FACEBOOK_POST_ERROR',
           timestamp: new Date().toISOString(),
         },
       },
@@ -159,26 +189,23 @@ export async function POST(request: NextRequest) {
 }
 
 // ============================================================================
-// HANDLER FUNCTIONS
+// OAUTH CALLBACK HANDLER
 // ============================================================================
 
-/**
- * Handles OAuth callback from LinkedIn
- */
 async function handleOAuthCallback(code: string, state: string) {
   try {
     // For demo purposes, use mock data
-    const useMockData = !process.env.LINKEDIN_CLIENT_ID || process.env.NODE_ENV === 'development';
+    const useMockData = !process.env.FACEBOOK_CLIENT_ID || process.env.NODE_ENV === 'development';
 
     if (useMockData) {
       return NextResponse.json({
         success: true,
         data: {
-          profile: MOCK_LINKEDIN_PROFILE,
+          profile: MOCK_FACEBOOK_PROFILE,
           token: {
-            accessToken: 'mock-linkedin-token',
+            accessToken: 'mock-facebook-token',
             expiresIn: 5184000, // 60 days
-            scope: 'openid profile email w_member_social',
+            scope: 'public_profile email pages_manage_posts pages_read_engagement',
           },
           mock: true,
         },
@@ -191,16 +218,13 @@ async function handleOAuthCallback(code: string, state: string) {
     }
 
     // Real OAuth flow
-    const tokenData = await exchangeLinkedInCode(code, state);
-    const profile = await getLinkedInProfile(tokenData.accessToken);
+    const tokenData = await exchangeFacebookCode(code, state);
+    const profile = await getFacebookProfile(tokenData.accessToken);
 
     // Store the token in the database
-    // Note: We need the user ID, but we don't have it in the OAuth callback
-    // This is a limitation of the current OAuth flow - we need to associate tokens with users
-    // For now, we'll store it with a placeholder user ID
     const userId = 'oauth-callback-user'; // TODO: Get actual user ID from session or state
 
-    await storeSocialToken(userId, 'LINKEDIN', {
+    await storeSocialToken(userId, SocialPlatform.FACEBOOK, {
       accessToken: tokenData.accessToken,
       refreshToken: tokenData.refreshToken,
       expiresIn: tokenData.expiresIn,
@@ -226,7 +250,7 @@ async function handleOAuthCallback(code: string, state: string) {
       },
     });
   } catch (error) {
-    console.error('LinkedIn OAuth callback error:', error);
+    console.error('Facebook OAuth callback error:', error);
 
     return NextResponse.json(
       {
@@ -242,42 +266,10 @@ async function handleOAuthCallback(code: string, state: string) {
   }
 }
 
-/**
- * Handles getting LinkedIn profile
- */
-async function handleGetProfile(request: NextRequest) {
-  const searchParams = request.nextUrl.searchParams;
-  const useMockData = searchParams.get('mock') === 'true' || !process.env.LINKEDIN_CLIENT_ID;
+// ============================================================================
+// CONTENT HANDLERS
+// ============================================================================
 
-  if (useMockData) {
-    return NextResponse.json({
-      success: true,
-      data: MOCK_LINKEDIN_PROFILE,
-      metadata: {
-        timestamp: new Date().toISOString(),
-        requestId: crypto.randomUUID(),
-        usingMockData: true,
-      },
-    });
-  }
-
-  // Real profile fetching would require stored access token
-  return NextResponse.json(
-    {
-      success: false,
-      error: {
-        message: 'LinkedIn profile access not implemented yet',
-        code: 'FEATURE_NOT_IMPLEMENTED',
-        timestamp: new Date().toISOString(),
-      },
-    },
-    { status: 501 }
-  );
-}
-
-/**
- * Handles publishing content to LinkedIn
- */
 async function handlePublishPost(
   params: {
     content: string;
@@ -290,7 +282,7 @@ async function handlePublishPost(
   const { content, hashtags = [] } = params;
 
   // Rate limiting check
-  const rateLimiter = LinkedInRateLimiter.getInstance();
+  const rateLimiter = FacebookRateLimiter.getInstance();
   if (!rateLimiter.canMakeRequest(userId)) {
     const resetTime = rateLimiter.getResetTime(userId);
 
@@ -298,7 +290,7 @@ async function handlePublishPost(
       {
         success: false,
         error: {
-          message: 'Rate limit exceeded for LinkedIn posting',
+          message: 'Rate limit exceeded for Facebook posting',
           code: 'RATE_LIMIT_EXCEEDED',
           timestamp: new Date().toISOString(),
           retryAfter: Math.ceil(resetTime / 1000), // in seconds
@@ -309,7 +301,7 @@ async function handlePublishPost(
   }
 
   // Content validation
-  const validation = validateLinkedInContent(content);
+  const validation = validateFacebookContent(content);
   if (!validation.isValid) {
     return NextResponse.json(
       {
@@ -327,17 +319,17 @@ async function handlePublishPost(
   }
 
   // Content optimization
-  const optimized = optimizeContentForLinkedIn({
+  const optimized = optimizeContentForFacebook({
     text: content,
     hashtags,
-    platform: 'linkedin',
+    platform: 'facebook',
   });
 
-  // Check if we have LinkedIn credentials for real publishing
-  const useMockData = !process.env.LINKEDIN_CLIENT_ID || !process.env.LINKEDIN_CLIENT_SECRET;
+  // Check if we have Facebook credentials for real publishing
+  const useMockData = !process.env.FACEBOOK_CLIENT_ID || !process.env.FACEBOOK_CLIENT_SECRET;
 
   if (useMockData) {
-    const mockResult = await createMockLinkedInPost(optimized.optimizedText, optimized.hashtags);
+    const mockResult = await createMockFacebookPost(optimized.optimizedText, optimized.hashtags);
     rateLimiter.recordRequest(userId);
 
     return NextResponse.json({
@@ -365,18 +357,18 @@ async function handlePublishPost(
     });
   }
 
-  // Real LinkedIn posting
+  // Real Facebook posting
   try {
-    // Get stored LinkedIn access token for user
-    const accessToken = await getSocialToken(userId, 'LINKEDIN');
+    // Get stored Facebook access token for user
+    const accessToken = await getSocialToken(userId, SocialPlatform.FACEBOOK);
 
     if (!accessToken) {
       return NextResponse.json(
         {
           success: false,
           error: {
-            message: 'LinkedIn account not connected. Please authenticate first.',
-            code: 'LINKEDIN_NOT_CONNECTED',
+            message: 'Facebook account not connected. Please authenticate first.',
+            code: 'FACEBOOK_NOT_CONNECTED',
             timestamp: new Date().toISOString(),
           },
         },
@@ -385,7 +377,7 @@ async function handlePublishPost(
     }
 
     // eslint-disable-next-line @typescript-eslint/no-unsafe-call
-    const postResult = (await postToLinkedIn(accessToken, {
+    const postResult = (await postToFacebook(accessToken, {
       text: optimized.optimizedText,
       hashtags: optimized.hashtags,
       linkUrl: params.linkUrl,
@@ -422,14 +414,14 @@ async function handlePublishPost(
       },
     });
   } catch (error) {
-    console.error('LinkedIn posting error:', error);
+    console.error('Facebook posting error:', error);
 
     return NextResponse.json(
       {
         success: false,
         error: {
-          message: 'Failed to publish to LinkedIn',
-          code: 'LINKEDIN_PUBLISH_FAILED',
+          message: 'Failed to publish to Facebook',
+          code: 'FACEBOOK_PUBLISH_FAILED',
           details: error instanceof Error ? error.message : 'Unknown error',
           timestamp: new Date().toISOString(),
         },
@@ -443,11 +435,16 @@ async function handlePublishPost(
  * Handles content validation
  */
 async function handleValidateContent(params: { content: string }) {
-  const validation = validateLinkedInContent(params.content);
+  const validation = validateFacebookContent(params.content);
 
   return NextResponse.json({
     success: true,
-    data: validation,
+    data: {
+      isValid: validation.isValid,
+      issues: validation.issues,
+      riskScore: validation.riskScore,
+      characterCount: params.content.length,
+    },
     metadata: {
       timestamp: new Date().toISOString(),
       requestId: crypto.randomUUID(),
@@ -459,15 +456,20 @@ async function handleValidateContent(params: { content: string }) {
  * Handles content optimization
  */
 async function handleOptimizeContent(params: { content: string; hashtags?: string[] }) {
-  const optimized = optimizeContentForLinkedIn({
+  const optimized = optimizeContentForFacebook({
     text: params.content,
     hashtags: params.hashtags || [],
-    platform: 'linkedin',
+    platform: 'facebook',
   });
 
   return NextResponse.json({
     success: true,
-    data: optimized,
+    data: {
+      optimizedText: optimized.optimizedText,
+      hashtags: optimized.hashtags,
+      characterCount: optimized.characterCount,
+      warnings: optimized.warnings,
+    },
     metadata: {
       timestamp: new Date().toISOString(),
       requestId: crypto.randomUUID(),

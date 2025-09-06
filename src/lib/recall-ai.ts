@@ -77,8 +77,8 @@ export async function scheduleMeetingBot(
   config: Partial<BotConfig> = {}
 ): Promise<RecallBot> {
   try {
-    // For development/demo - return mock bot
-    if (!RECALL_API_CONFIG.apiKey || process.env.NODE_ENV === 'development') {
+    // For development/demo - return mock bot only if no API key
+    if (!RECALL_API_CONFIG.apiKey || RECALL_API_CONFIG.apiKey === 'your-recall-ai-api-key') {
       return createMockBot(meetingUrl, config);
     }
 
@@ -143,8 +143,8 @@ export async function scheduleMeetingBot(
  */
 export async function getBotStatus(botId: string): Promise<RecallBot> {
   try {
-    // For development/demo - return mock bot status
-    if (!RECALL_API_CONFIG.apiKey || process.env.NODE_ENV === 'development') {
+    // For development/demo - return mock bot status only if no API key
+    if (!RECALL_API_CONFIG.apiKey || RECALL_API_CONFIG.apiKey === 'your-recall-ai-api-key') {
       return getMockBotStatus(botId);
     }
 
@@ -190,8 +190,8 @@ export async function getBotStatus(botId: string): Promise<RecallBot> {
  */
 export async function cancelMeetingBot(botId: string): Promise<void> {
   try {
-    // For development/demo - just log the cancellation
-    if (!RECALL_API_CONFIG.apiKey || process.env.NODE_ENV === 'development') {
+    // For development/demo - just log the cancellation only if no API key
+    if (!RECALL_API_CONFIG.apiKey || RECALL_API_CONFIG.apiKey === 'your-recall-ai-api-key') {
       recallLogger.info(`Mock: Cancelled meeting bot ${botId}`);
       return;
     }
@@ -219,8 +219,8 @@ export async function listMeetingBots(
   } = {}
 ): Promise<RecallBot[]> {
   try {
-    // For development/demo - return mock bots
-    if (!RECALL_API_CONFIG.apiKey || process.env.NODE_ENV === 'development') {
+    // For development/demo - return mock bots only if no API key
+    if (!RECALL_API_CONFIG.apiKey || RECALL_API_CONFIG.apiKey === 'your-recall-ai-api-key') {
       return getMockBotList(options);
     }
 
@@ -282,8 +282,8 @@ export async function listMeetingBots(
  */
 export async function getMeetingTranscript(botId: string): Promise<MeetingTranscript> {
   try {
-    // For development/demo - return mock transcript
-    if (!RECALL_API_CONFIG.apiKey || process.env.NODE_ENV === 'development') {
+    // For development/demo - return mock transcript only if no API key
+    if (!RECALL_API_CONFIG.apiKey || RECALL_API_CONFIG.apiKey === 'your-recall-ai-api-key') {
       // eslint-disable-next-line @typescript-eslint/no-unsafe-return
       return getMockTranscript(botId);
     }
