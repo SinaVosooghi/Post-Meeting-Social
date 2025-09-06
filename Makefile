@@ -90,7 +90,17 @@ test-coverage: ## Run tests with coverage
 	@echo "✅ Test coverage report generated!"
 
 # Code Quality
-lint: ## Run ESLint
+type-sheriff: ## Check for type definitions outside master-interfaces.ts
+	@echo "🔍 Checking for type definitions outside master-interfaces.ts..."
+	@if grep -rn "^\(export\s\+\)\?\(type\|interface\)\s\+" src | grep -v "master-interfaces.ts" | grep -v "\.backup" | grep -v "src/types/index.ts" | grep -v "src/components/ui/" | grep -q .; then \
+		echo "❌ Found type definitions outside master-interfaces.ts:"; \
+		grep -rn "^\(export\s\+\)\?\(type\|interface\)\s\+" src | grep -v "master-interfaces.ts" | grep -v "\.backup" | grep -v "src/types/index.ts" | grep -v "src/components/ui/"; \
+		exit 1; \
+	else \
+		echo "✅ All types properly centralized"; \
+	fi
+
+lint: type-sheriff ## Run ESLint
 	@echo "🔍 Linting code..."
 	yarn lint
 	@echo "✅ Linting completed!"

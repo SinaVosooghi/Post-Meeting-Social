@@ -62,7 +62,10 @@ function createPostPrompt(
   includeHashtags: boolean,
   includeEmojis: boolean
 ): string {
-  const platformGuidelines = {
+  const platformGuidelines: Record<
+    SocialPlatform,
+    { style: string; maxLength: number; hashtagCount: string }
+  > = {
     [SocialPlatform.LINKEDIN]: {
       style: 'Professional, thought-leadership focused',
       maxLength: 3000,
@@ -78,15 +81,20 @@ function createPostPrompt(
       maxLength: 280,
       hashtagCount: '1-2 hashtags maximum',
     },
+    [SocialPlatform.INSTAGRAM]: {
+      style: 'Visual, story-driven',
+      maxLength: 2200,
+      hashtagCount: '5-10 relevant hashtags',
+    },
   };
 
-  const lengthGuidelines = {
+  const lengthGuidelines: Record<ContentLength, string> = {
     [ContentLength.SHORT]: '50-100 characters',
     [ContentLength.MEDIUM]: '100-200 characters',
     [ContentLength.LONG]: 'Up to platform maximum',
   };
 
-  const toneGuidelines = {
+  const toneGuidelines: Record<ContentTone, string> = {
     [ContentTone.PROFESSIONAL]: 'Formal, authoritative, industry-focused',
     [ContentTone.CASUAL]: 'Friendly, approachable, conversational',
     [ContentTone.ENTHUSIASTIC]: 'Energetic, motivational, inspiring',
@@ -190,10 +198,10 @@ export async function generateSocialMediaPosts(
       const prompt = createPostPrompt(
         request.transcript,
         platform,
-        request.automationSettings.tone,
-        request.automationSettings.length,
-        request.automationSettings.includeHashtags,
-        request.automationSettings.includeEmojis
+        request.automationSettings.tone as ContentTone,
+        request.automationSettings.length as ContentLength,
+        request.automationSettings.includeHashtags as boolean,
+        request.automationSettings.includeEmojis as boolean
       );
 
       const response = await withTimeout(
@@ -369,7 +377,7 @@ export async function generateMockSocialMediaPosts(
   ];
 
   return {
-    posts: mockPosts.slice(0, request.automationSettings.maxPosts),
+    posts: mockPosts.slice(0, (request.automationSettings.maxPosts as number) ?? 3),
     metadata: {
       tokensUsed: 450,
       processingTimeMs: 1500,

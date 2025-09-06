@@ -18,6 +18,8 @@ export default tseslint.config(
       '**/node_modules/**',
       '**/.next/**',
       'test-auth.js',
+      '**/*.backup',
+      '**/types.backup/**',
     ],
   },
   eslint.configs.recommended,
@@ -133,6 +135,15 @@ export default tseslint.config(
         },
       ],
 
+      // Type System Guardrails - Prevent type definitions outside master-interfaces.ts
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector: 'TSInterfaceDeclaration, TSTypeAliasDeclaration',
+          message: 'Define all interfaces/types in src/types/master-interfaces.ts only. Use imports instead.',
+        },
+      ],
+
       // General Rules
       'no-console': ['warn', { allow: ['warn', 'error'] }],
       'prefer-const': 'error',
@@ -148,6 +159,17 @@ export default tseslint.config(
         printWidth: 100,
         tabWidth: 2,
       }],
+    },
+  },
+  {
+    // Allow type definitions ONLY in the master file and specific exceptions
+    files: [
+      'src/types/master-interfaces.ts',
+      'src/types/*.d.ts',
+      'src/components/ui/*.tsx',
+    ],
+    rules: {
+      'no-restricted-syntax': 'off',
     },
   },
   {

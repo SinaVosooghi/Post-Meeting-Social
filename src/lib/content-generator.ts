@@ -3,28 +3,14 @@
  * Transforms meeting content into social media posts
  */
 
-import type { ClientMeeting } from '@/types/master-interfaces';
-import { SocialPlatform } from '@/types/master-interfaces';
+import type { ClientMeeting, GeneratePostOptions, GeneratedPostUtility } from '@/types';
+import { SocialPlatform } from '@/types';
 import { validateLinkedInContent, optimizeContentForLinkedIn } from '@/lib/linkedin';
-
-interface GeneratePostOptions {
-  meeting: ClientMeeting;
-  platform: SocialPlatform;
-  tone?: 'professional' | 'casual' | 'educational';
-  includeHashtags?: boolean;
-}
-
-interface GeneratedPost {
-  content: string;
-  hashtags: string[];
-  riskScore: number;
-  issues: string[];
-}
 
 /**
  * Generates social media post from meeting content
  */
-export async function generatePost(options: GeneratePostOptions): Promise<GeneratedPost> {
+export async function generatePost(options: GeneratePostOptions): Promise<GeneratedPostUtility> {
   const { meeting, platform, tone = 'professional', includeHashtags = true } = options;
 
   // Extract key points from meeting

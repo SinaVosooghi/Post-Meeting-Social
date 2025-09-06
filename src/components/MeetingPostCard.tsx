@@ -11,13 +11,8 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { Spinner } from '@/components/ui/spinner';
-import type { ClientMeeting, SocialMediaPost, GeneratedContent } from '@/types/master-interfaces';
-import { SocialPlatform, ContentTone } from '@/types/master-interfaces';
-
-export interface MeetingPostCardProps extends React.HTMLAttributes<HTMLDivElement> {
-  key?: string;
-  meeting: ClientMeeting;
-}
+import type { SocialMediaPost, MeetingPostCardProps, ContentGenerationResponse } from '@/types';
+import { SocialPlatform, ContentTone } from '@/types';
 
 export function MeetingPostCard({ meeting }: MeetingPostCardProps) {
   const [content, setContent] = React.useState('');
@@ -40,19 +35,15 @@ export function MeetingPostCard({ meeting }: MeetingPostCardProps) {
         }),
       });
 
-      const data = (await response.json()) as {
-        success: boolean;
-        data?: GeneratedContent;
-        error?: { message: string };
-      };
+      const data = (await response.json()) as ContentGenerationResponse;
       if (!data.success || !data.data) {
         throw new Error(data.error?.message || 'Failed to generate content');
       }
 
       const generatedContent = data.data;
       setContent(generatedContent.content.finalContent);
-      setRiskScore(generatedContent.riskScore);
-      setValidationIssues(generatedContent.complianceFlags);
+      setRiskScore(generatedContent.riskScore as number);
+      setValidationIssues(generatedContent.complianceFlags as string[]);
     } catch (error) {
       setPublishError(error instanceof Error ? error.message : 'Content generation failed');
     }
