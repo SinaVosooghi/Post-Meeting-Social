@@ -1,18 +1,23 @@
 /**
  * Google Calendar Events API Endpoint
  * POST /api/calendar/events - Fetch calendar events
- * 
+ *
  * Handles fetching calendar events from Google Calendar API
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
+import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
-import { 
-  getUpcomingEvents, 
+import {
+  getUpcomingEvents,
   getMockCalendarEvents,
-  validateGoogleCalendarAccess 
+  validateGoogleCalendarAccess,
 } from '@/lib/google-calendar';
-// CalendarEvent type imported but not used in this demo version
+import type {
+  ApiResponse,
+  CalendarEventsRequest,
+  CalendarEventsResponse,
+} from '@/types/master-interfaces';
 
 // ============================================================================
 // API ROUTE HANDLER
@@ -23,13 +28,21 @@ export async function GET(request: NextRequest) {
     // Check authentication
     const session = await auth();
     if (!session?.user?.id) {
-      return NextResponse.json(
+      return NextResponse.json<ApiResponse<never>>(
         {
           success: false,
           error: {
             message: 'Authentication required',
             code: 'UNAUTHORIZED',
             timestamp: new Date().toISOString(),
+            requestId: crypto.randomUUID(),
+          },
+          metadata: {
+            timestamp: new Date().toISOString(),
+            requestId: crypto.randomUUID(),
+            processingTimeMs: 0,
+            version: '1.0.0',
+            complianceChecked: false,
           },
         },
         { status: 401 }
@@ -44,8 +57,9 @@ export async function GET(request: NextRequest) {
     // For development/demo - use mock data
     if (useMockData) {
       const mockEvents = await getMockCalendarEvents();
-      
-      return NextResponse.json({
+      const requestId = crypto.randomUUID();
+
+      return NextResponse.json<ApiResponse<CalendarEventsResponse>>({
         success: true,
         data: {
           events: mockEvents,
@@ -54,8 +68,10 @@ export async function GET(request: NextRequest) {
         },
         metadata: {
           timestamp: new Date().toISOString(),
-          requestId: crypto.randomUUID(),
-          usingMockData: true,
+          requestId,
+          processingTimeMs: 0,
+          version: '1.0.0',
+          complianceChecked: false,
         },
       });
     }
@@ -66,13 +82,22 @@ export async function GET(request: NextRequest) {
     const accessToken = 'mock-access-token';
 
     if (!accessToken) {
-      return NextResponse.json(
+      const requestId = crypto.randomUUID();
+      return NextResponse.json<ApiResponse<never>>(
         {
           success: false,
           error: {
             message: 'Google Calendar access not configured. Please connect your Google account.',
             code: 'GOOGLE_AUTH_REQUIRED',
             timestamp: new Date().toISOString(),
+            requestId,
+          },
+          metadata: {
+            timestamp: new Date().toISOString(),
+            requestId,
+            processingTimeMs: 0,
+            version: '1.0.0',
+            complianceChecked: false,
           },
         },
         { status: 400 }
@@ -82,13 +107,22 @@ export async function GET(request: NextRequest) {
     // Validate access token
     const hasValidAccess = await validateGoogleCalendarAccess(accessToken);
     if (!hasValidAccess) {
-      return NextResponse.json(
+      const requestId = crypto.randomUUID();
+      return NextResponse.json<ApiResponse<never>>(
         {
           success: false,
           error: {
             message: 'Google Calendar access expired. Please reconnect your account.',
             code: 'GOOGLE_AUTH_EXPIRED',
             timestamp: new Date().toISOString(),
+            requestId,
+          },
+          metadata: {
+            timestamp: new Date().toISOString(),
+            requestId,
+            processingTimeMs: 0,
+            version: '1.0.0',
+            complianceChecked: false,
           },
         },
         { status: 401 }
@@ -98,6 +132,7 @@ export async function GET(request: NextRequest) {
     // Fetch calendar events
     const timeMin = new Date();
     const timeMax = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000); // 30 days from now
+    const startTime = Date.now();
 
     const events = await getUpcomingEvents(accessToken, {
       maxResults,
@@ -105,7 +140,10 @@ export async function GET(request: NextRequest) {
       timeMax,
     });
 
-    return NextResponse.json({
+    const processingTime = Date.now() - startTime;
+    const requestId = crypto.randomUUID();
+
+    return NextResponse.json<ApiResponse<CalendarEventsResponse>>({
       success: true,
       data: {
         events,
@@ -118,21 +156,29 @@ export async function GET(request: NextRequest) {
       },
       metadata: {
         timestamp: new Date().toISOString(),
-        requestId: crypto.randomUUID(),
-        usingMockData: false,
+        requestId,
+        processingTimeMs: processingTime,
+        version: '1.0.0',
+        complianceChecked: false,
       },
     });
-
   } catch (error) {
-    console.error('Calendar events API error:', error);
-
-    return NextResponse.json(
+    const requestId = crypto.randomUUID();
+    return NextResponse.json<ApiResponse<never>>(
       {
         success: false,
         error: {
           message: error instanceof Error ? error.message : 'Failed to fetch calendar events',
           code: 'CALENDAR_FETCH_ERROR',
           timestamp: new Date().toISOString(),
+          requestId,
+        },
+        metadata: {
+          timestamp: new Date().toISOString(),
+          requestId,
+          processingTimeMs: 0,
+          version: '1.0.0',
+          complianceChecked: false,
         },
       },
       { status: 500 }
@@ -145,31 +191,41 @@ export async function POST(request: NextRequest) {
     // Check authentication
     const session = await auth();
     if (!session?.user?.id) {
-      return NextResponse.json(
+      const requestId = crypto.randomUUID();
+      return NextResponse.json<ApiResponse<never>>(
         {
           success: false,
           error: {
             message: 'Authentication required',
             code: 'UNAUTHORIZED',
             timestamp: new Date().toISOString(),
+            requestId,
+          },
+          metadata: {
+            timestamp: new Date().toISOString(),
+            requestId,
+            processingTimeMs: 0,
+            version: '1.0.0',
+            complianceChecked: false,
           },
         },
         { status: 401 }
       );
     }
 
-    const body = await request.json();
-    const { action, ...params } = body;
+    const body = (await request.json()) as CalendarEventsRequest;
+    const { action, useMockData, ..._params } = body;
 
     switch (action) {
-      case 'fetch':
+      case 'fetch': {
         // Same logic as GET request
-        const useMockData = params.useMockData || !process.env.GOOGLE_CLIENT_ID;
+        const shouldUseMockData = useMockData || !process.env.GOOGLE_CLIENT_ID;
+        const requestId = crypto.randomUUID();
 
-        if (useMockData) {
+        if (shouldUseMockData) {
           const mockEvents = await getMockCalendarEvents();
-          
-          return NextResponse.json({
+
+          return NextResponse.json<ApiResponse<CalendarEventsResponse>>({
             success: true,
             data: {
               events: mockEvents,
@@ -178,49 +234,76 @@ export async function POST(request: NextRequest) {
             },
             metadata: {
               timestamp: new Date().toISOString(),
-              requestId: crypto.randomUUID(),
-              usingMockData: true,
+              requestId,
+              processingTimeMs: 0,
+              version: '1.0.0',
+              complianceChecked: false,
             },
           });
         }
 
         // Real Google Calendar integration would go here
-        return NextResponse.json(
+        return NextResponse.json<ApiResponse<never>>(
           {
             success: false,
             error: {
               message: 'Google Calendar integration not fully configured',
               code: 'FEATURE_NOT_IMPLEMENTED',
               timestamp: new Date().toISOString(),
+              requestId,
+            },
+            metadata: {
+              timestamp: new Date().toISOString(),
+              requestId,
+              processingTimeMs: 0,
+              version: '1.0.0',
+              complianceChecked: false,
             },
           },
           { status: 501 }
         );
+      }
 
-      default:
-        return NextResponse.json(
+      default: {
+        const requestId = crypto.randomUUID();
+        return NextResponse.json<ApiResponse<never>>(
           {
             success: false,
             error: {
               message: `Unknown action: ${action}`,
               code: 'INVALID_ACTION',
               timestamp: new Date().toISOString(),
+              requestId,
+            },
+            metadata: {
+              timestamp: new Date().toISOString(),
+              requestId,
+              processingTimeMs: 0,
+              version: '1.0.0',
+              complianceChecked: false,
             },
           },
           { status: 400 }
         );
+      }
     }
-
   } catch (error) {
-    console.error('Calendar events API error:', error);
-
-    return NextResponse.json(
+    const requestId = crypto.randomUUID();
+    return NextResponse.json<ApiResponse<never>>(
       {
         success: false,
         error: {
           message: error instanceof Error ? error.message : 'Failed to process calendar request',
           code: 'CALENDAR_API_ERROR',
           timestamp: new Date().toISOString(),
+          requestId,
+        },
+        metadata: {
+          timestamp: new Date().toISOString(),
+          requestId,
+          processingTimeMs: 0,
+          version: '1.0.0',
+          complianceChecked: false,
         },
       },
       { status: 500 }

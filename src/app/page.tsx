@@ -9,14 +9,18 @@
 
 import React, { useState } from 'react';
 import { useSession } from 'next-auth/react';
-import {
-  ContentTone,
-  ContentLength,
-  MeetingPlatform,
-  GeneratePostsRequest,
-  GeneratePostsResponse,
-} from '@/types';
+import type { GeneratePostsRequest, GeneratePostsResponse } from '@/types';
+import { ContentTone, ContentLength, MeetingPlatform } from '@/types';
 import { Navigation } from '@/components/navigation';
+import { logger } from '@/lib/logger';
+
+// ============================================================================
+// UTILITY FUNCTIONS
+// ============================================================================
+
+function ensureError(err: unknown): Error {
+  return err instanceof Error ? err : new Error(String(err));
+}
 
 // ============================================================================
 // MOCK DATA FOR DEMO
@@ -101,9 +105,13 @@ export default function HomePage() {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
 
-      const result = await response.json();
+      const result = (await response.json()) as {
+        success: boolean;
+        data?: GeneratePostsResponse;
+        error?: { message: string };
+      };
 
-      if (result.success) {
+      if (result.success && result.data) {
         setGeneratedPosts(result.data);
       } else {
         throw new Error(result.error?.message || 'Failed to generate posts');
@@ -111,7 +119,7 @@ export default function HomePage() {
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
       setError(errorMessage);
-      console.error('Error generating posts:', err);
+      logger.error('Failed to generate posts', ensureError(err));
     } finally {
       setIsGenerating(false);
     }
@@ -139,9 +147,18 @@ export default function HomePage() {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
 
-      const result = await response.json();
+      const result = (await response.json()) as {
+        success: boolean;
+        data?: {
+          subject: string;
+          content: string;
+          actionItems: string[];
+          nextSteps: string;
+        };
+        error?: { message: string };
+      };
 
-      if (result.success) {
+      if (result.success && result.data) {
         setGeneratedEmail(result.data);
       } else {
         throw new Error(result.error?.message || 'Failed to generate email');
@@ -149,7 +166,7 @@ export default function HomePage() {
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
       setError(errorMessage);
-      console.error('Error generating email:', err);
+      logger.error('Failed to generate email', ensureError(err));
     } finally {
       setIsGenerating(false);
     }
@@ -160,9 +177,9 @@ export default function HomePage() {
     try {
       await navigator.clipboard.writeText(text);
       // You could add a toast notification here
-      console.log('Copied to clipboard');
+      logger.info('Content copied to clipboard', { success: true });
     } catch (err) {
-      console.error('Failed to copy to clipboard:', err);
+      logger.error('Failed to copy to clipboard', ensureError(err));
     }
   };
 
@@ -206,7 +223,9 @@ export default function HomePage() {
                 <textarea
                   id="transcript"
                   value={transcript}
-                  onChange={e => setTranscript(e.target.value)}
+                  onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
+                    setTranscript(e.target.value)
+                  }
                   className="w-full h-64 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
                   placeholder="Paste your meeting transcript here..."
                 />
@@ -234,7 +253,9 @@ export default function HomePage() {
               {/* Action Buttons */}
               <div className="flex gap-4">
                 <button
-                  onClick={handleGeneratePosts}
+                  onClick={() => {
+                    void handleGeneratePosts();
+                  }}
                   disabled={isGenerating || !transcript.trim()}
                   className="flex-1 bg-blue-600 text-white px-6 py-3 rounded-lg font-medium hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                 >
@@ -249,7 +270,9 @@ export default function HomePage() {
                 </button>
 
                 <button
-                  onClick={handleGenerateEmail}
+                  onClick={() => {
+                    void handleGenerateEmail();
+                  }}
                   disabled={isGenerating || !transcript.trim()}
                   className="flex-1 bg-green-600 text-white px-6 py-3 rounded-lg font-medium hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                 >
@@ -315,53 +338,57 @@ export default function HomePage() {
                         Generated {generatedPosts.posts.length} posts in{' '}
                         {generatedPosts.metadata.processingTimeMs}ms
                         {generatedPosts.metadata.model.includes('mock') && (
-                          <span className="ml-2 px-2 py-1 bg-yellow-100 text-yellow-800 rounded text-xs">
+                          <span className="ml-2 px-2 py-1 bg-yellow-100 text-yellow-800 rounded tex</div>t-xs">
                             Using Mock Data
                           </span>
                         )}
                       </div>
 
-                      {generatedPosts.posts.map((post, index) => (
-                        <div key={index} className="border border-gray-200 rounded-lg p-4">
-                          <div className="flex items-center justify-between mb-2">
-                            <div className="flex items-center space-x-2">
-                              <span className="text-sm font-medium text-gray-700">
-                                {post.platform}
-                              </span>
-                              <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded">
-                                Post {index + 1}
-                              </span>
-                            </div>
-                            <button
-                              onClick={() => handleCopyToClipboard(post.content)}
-                              className="text-sm text-blue-600 hover:text-blue-700 font-medium"
-                            >
-                              📋 Copy
-                            </button>
-                          </div>
-
-                          <p className="text-gray-800 mb-3 leading-relaxed">{post.content}</p>
-
-                          {post.hashtags && post.hashtags.length > 0 && (
-                            <div className="flex flex-wrap gap-1 mb-2">
-                              {post.hashtags.map((hashtag, idx) => (
-                                <span
-                                  key={idx}
-                                  className="px-2 py-1 bg-gray-100 text-gray-600 text-xs rounded"
-                                >
-                                  #{hashtag.replace('#', '')}
+                      {generatedPosts.posts.map(
+                        (post: GeneratePostsResponse['posts'][number], index: number) => (
+                          <div key={index} className="border border-gray-200 rounded-lg p-4">
+                            <div className="flex items-center justify-between mb-2">
+                              <div className="flex items-center space-x-2">
+                                <span className="text-sm font-medium text-gray-700">
+                                  {post.platform}
                                 </span>
-                              ))}
+                                <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded">
+                                  Post {index + 1}
+                                </span>
+                              </div>
+                              <button
+                                onClick={() => {
+                                  void handleCopyToClipboard(post.content);
+                                }}
+                                className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+                              >
+                                📋 Copy
+                              </button>
                             </div>
-                          )}
 
-                          {post.reasoning && (
-                            <div className="text-xs text-gray-500 italic border-t pt-2 mt-2">
-                              <strong>AI Reasoning:</strong> {post.reasoning}
-                            </div>
-                          )}
-                        </div>
-                      ))}
+                            <p className="text-gray-800 mb-3 leading-relaxed">{post.content}</p>
+
+                            {post.hashtags && post.hashtags.length > 0 && (
+                              <div className="flex flex-wrap gap-1 mb-2">
+                                {post.hashtags.map((hashtag, idx) => (
+                                  <span
+                                    key={idx}
+                                    className="px-2 py-1 bg-gray-100 text-gray-600 text-xs rounded"
+                                  >
+                                    #{hashtag.replace('#', '')}
+                                  </span>
+                                ))}
+                              </div>
+                            )}
+
+                            {post.reasoning && (
+                              <div className="text-xs text-gray-500 italic border-t pt-2 mt-2">
+                                <strong>AI Reasoning:</strong> {post.reasoning}
+                              </div>
+                            )}
+                          </div>
+                        )
+                      )}
                     </>
                   ) : (
                     <div className="text-center py-12 text-gray-500">
@@ -380,11 +407,11 @@ export default function HomePage() {
                       <div className="flex items-center justify-between">
                         <span className="text-sm text-gray-500">Generated follow-up email</span>
                         <button
-                          onClick={() =>
-                            handleCopyToClipboard(
+                          onClick={() => {
+                            void handleCopyToClipboard(
                               `Subject: ${generatedEmail.subject}\n\n${generatedEmail.content}`
-                            )
-                          }
+                            );
+                          }}
                           className="text-sm text-blue-600 hover:text-blue-700 font-medium"
                         >
                           📋 Copy Email

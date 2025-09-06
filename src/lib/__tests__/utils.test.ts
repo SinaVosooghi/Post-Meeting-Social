@@ -331,23 +331,23 @@ describe('Async Utilities', () => {
   describe('retry', () => {
     it('should retry failed function', async () => {
       let attempts = 0;
-      const fn = jest.fn().mockImplementation(() => {
+      const fn: () => Promise<string> = jest.fn().mockImplementation(() => {
         attempts++;
         if (attempts < 3) {
           throw new Error('Failed');
         }
-        return 'Success';
+        return Promise.resolve('Success');
       });
 
-      const result = await retry(fn, 3, 10);
+      const result = await retry<string>(fn, 3, 10);
       expect(result).toBe('Success');
       expect(fn).toHaveBeenCalledTimes(3);
     });
 
     it('should throw after max retries', async () => {
-      const fn = jest.fn().mockRejectedValue(new Error('Always fails'));
+      const fn: () => Promise<never> = jest.fn().mockRejectedValue(new Error('Always fails'));
 
-      await expect(retry(fn, 2, 10)).rejects.toThrow('Always fails');
+      await expect(retry<never>(fn, 2, 10)).rejects.toThrow('Always fails');
       expect(fn).toHaveBeenCalledTimes(3); // Initial + 2 retries
     });
   });
