@@ -7,13 +7,8 @@
  */
 
 import OpenAI from 'openai';
-import {
-  GeneratePostsRequest,
-  GeneratePostsResponse,
-  SocialPlatform,
-  ContentTone,
-  ContentLength,
-} from '@/types';
+import type { GeneratePostsRequest, GeneratePostsResponse } from '@/types';
+import { SocialPlatform, ContentTone, ContentLength } from '@/types';
 import { handleError, retry, withTimeout } from '@/lib/utils';
 
 // ============================================================================
@@ -233,7 +228,14 @@ export async function generateSocialMediaPosts(
       );
 
       // Parse the JSON response
-      const parsedResponse = JSON.parse(response.content);
+      const parsedResponse = JSON.parse(response.content) as {
+        posts: Array<{
+          platform: SocialPlatform;
+          content: string;
+          hashtags: string[];
+          reasoning: string;
+        }>;
+      };
 
       if (!parsedResponse.posts || !Array.isArray(parsedResponse.posts)) {
         throw new Error('Invalid response format from OpenAI');
@@ -306,7 +308,14 @@ export async function generateFollowUpEmail(
       'OpenAI email generation timed out'
     );
 
-    const parsedResponse = JSON.parse(response);
+    const parsedResponse = JSON.parse(response) as {
+      email: {
+        subject: string;
+        content: string;
+        actionItems: string[];
+        nextSteps: string;
+      };
+    };
 
     if (!parsedResponse.email) {
       throw new Error('Invalid email response format from OpenAI');

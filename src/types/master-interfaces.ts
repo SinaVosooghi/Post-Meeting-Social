@@ -1,7 +1,7 @@
 /**
  * MASTER INTERFACES - Post-Meeting Social Media Generator
  * Comprehensive TypeScript definitions aligned with MASTER_ARCHITECTURE.md
- * 
+ *
  * This file contains ALL interfaces needed for the Jump.ai challenge implementation.
  * Every interface maps directly to components in our production architecture.
  */
@@ -65,7 +65,7 @@ export interface ClientMeeting {
   readonly endTime: Date;
   readonly meetingUrl: string;
   readonly platform: MeetingPlatform;
-  
+
   // Client relationship context
   readonly clientRelationship: {
     readonly clientId: string;
@@ -81,7 +81,7 @@ export interface ClientMeeting {
       readonly preferredContactMethod: 'email' | 'phone' | 'text' | 'portal';
     };
   };
-  
+
   // Compliance flags for content generation
   readonly complianceFlags: {
     readonly containsSensitiveData: boolean;
@@ -91,7 +91,7 @@ export interface ClientMeeting {
     readonly riskLevel: 'low' | 'medium' | 'high' | 'critical';
     readonly topicsDiscussed: readonly string[];
   };
-  
+
   // Meeting recording and transcription
   readonly recordingDetails: {
     readonly botId: string | null;
@@ -103,7 +103,7 @@ export interface ClientMeeting {
     readonly duration: number | null; // in seconds
     readonly participantCount: number | null;
   };
-  
+
   readonly createdAt: Date;
   readonly updatedAt: Date;
   readonly advisor: FinancialAdvisor;
@@ -120,7 +120,7 @@ export interface ComplianceValidation {
   readonly meetingId?: string;
   readonly validationType: 'pre_publication' | 'post_publication' | 'audit' | 'manual_review';
   readonly status: 'pending' | 'approved' | 'rejected' | 'requires_modification' | 'under_review';
-  
+
   // Comprehensive compliance checks
   readonly complianceChecks: {
     readonly finraCompliance: ComplianceResult;
@@ -129,7 +129,7 @@ export interface ComplianceValidation {
     readonly clientPrivacyCompliance: ComplianceResult;
     readonly stateRegulationCompliance: ComplianceResult;
   };
-  
+
   // Risk assessment
   readonly riskAssessment: {
     readonly overallRiskScore: number; // 0-100
@@ -137,7 +137,7 @@ export interface ComplianceValidation {
     readonly mitigationRequired: boolean;
     readonly reviewerComments?: string;
   };
-  
+
   // Content modifications
   readonly contentModifications: {
     readonly originalContent: string;
@@ -146,7 +146,7 @@ export interface ComplianceValidation {
     readonly removedContent: readonly string[];
     readonly addedWarnings: readonly string[];
   };
-  
+
   // Approval workflow
   readonly approvalWorkflow: {
     readonly approvedBy?: string;
@@ -156,7 +156,7 @@ export interface ComplianceValidation {
     readonly escalatedTo?: string;
     readonly escalationReason?: string;
   };
-  
+
   // Complete audit trail
   readonly auditTrail: readonly ComplianceAuditEntry[];
   readonly createdAt: Date;
@@ -203,7 +203,7 @@ export interface SocialMediaPost {
   readonly advisorId: string;
   readonly platform: SocialPlatform;
   readonly contentType: 'post' | 'article' | 'story' | 'reel';
-  
+
   // Content details
   readonly content: {
     readonly originalContent: string;
@@ -213,7 +213,7 @@ export interface SocialMediaPost {
     readonly mediaUrls: readonly string[];
     readonly linkPreview?: LinkPreview;
   };
-  
+
   // Publishing details
   readonly publishingDetails: {
     readonly status: PublishingStatus;
@@ -224,17 +224,17 @@ export interface SocialMediaPost {
     readonly engagement?: SocialEngagement;
     readonly reach?: number;
   };
-  
+
   // Compliance integration
   readonly complianceValidationId: string;
   readonly complianceStatus: 'pending' | 'approved' | 'rejected' | 'requires_review';
-  
+
   // Error handling and retries
   readonly publishingAttempts: readonly PublishingAttempt[];
   readonly lastError?: string;
   readonly retryCount: number;
   readonly maxRetries: number;
-  
+
   readonly createdAt: Date;
   readonly updatedAt: Date;
 }
@@ -248,14 +248,14 @@ export interface SocialMediaToken {
   readonly userId: string;
   readonly platform: SocialPlatform;
   readonly tokenType: 'access' | 'refresh' | 'page_access';
-  
+
   // Token details (encrypted at rest)
   readonly encryptedToken: string;
   readonly tokenScope: readonly string[];
   readonly expiresAt: Date;
   readonly refreshToken?: string;
   readonly refreshExpiresAt?: Date;
-  
+
   // Platform-specific details
   readonly platformDetails: {
     readonly userId?: string;
@@ -264,13 +264,13 @@ export interface SocialMediaToken {
     readonly pageName?: string;
     readonly permissions: readonly string[];
   };
-  
+
   // Token health monitoring
   readonly healthStatus: 'healthy' | 'expiring_soon' | 'expired' | 'revoked' | 'error';
   readonly lastValidated: Date;
   readonly lastRefreshed?: Date;
   readonly refreshCount: number;
-  
+
   readonly createdAt: Date;
   readonly updatedAt: Date;
 }
@@ -330,18 +330,18 @@ export interface CalendarEvent {
   readonly meetingUrl: string;
   readonly provider: CalendarProvider;
   readonly calendarId: string;
-  
+
   // Attendee management
   readonly attendees: readonly CalendarAttendee[];
   readonly organizer: CalendarAttendee;
   readonly maxAttendees?: number;
-  
+
   // Meeting properties
   readonly isRecurring: boolean;
   readonly recurrencePattern?: RecurrencePattern;
   readonly status: 'confirmed' | 'tentative' | 'cancelled';
   readonly visibility: 'default' | 'public' | 'private' | 'confidential';
-  
+
   // Bot integration
   readonly botSettings: {
     readonly enableBot: boolean;
@@ -350,7 +350,7 @@ export interface CalendarEvent {
     readonly transcriptionEnabled: boolean;
     readonly autoGenerateContent: boolean;
   };
-  
+
   // Client context (for financial advisors)
   readonly clientContext?: {
     readonly isClientMeeting: boolean;
@@ -358,7 +358,7 @@ export interface CalendarEvent {
     readonly meetingType: 'consultation' | 'review' | 'planning' | 'onboarding' | 'check_in';
     readonly confidentialityLevel: 'standard' | 'high' | 'restricted';
   };
-  
+
   readonly createdAt: Date;
   readonly updatedAt: Date;
 }
@@ -397,7 +397,7 @@ export interface RecallBot {
   readonly meetingId: string;
   readonly meetingUrl: string;
   readonly status: BotStatus;
-  
+
   // Bot configuration
   readonly config: {
     readonly botName: string;
@@ -410,14 +410,14 @@ export interface RecallBot {
     readonly joinMinutesBefore: number;
     readonly autoLeaveAfterMinutes?: number;
   };
-  
+
   // Scheduling and timing
   readonly scheduledAt: Date;
   readonly joinedAt: Date | null;
   readonly startedRecordingAt: Date | null;
   readonly endedAt: Date | null;
   readonly actualDuration: number | null; // in seconds
-  
+
   // Recording outputs
   readonly outputs: {
     readonly recordingUrl: string | null;
@@ -427,7 +427,7 @@ export interface RecallBot {
     readonly recordingSize: number | null; // in bytes
     readonly transcriptWordCount: number | null;
   };
-  
+
   // Platform detection and metadata
   readonly meetingPlatform: 'zoom' | 'google-meet' | 'microsoft-teams' | 'webex' | 'other';
   readonly platformMetadata: {
@@ -436,12 +436,12 @@ export interface RecallBot {
     readonly meetingPassword?: string;
     readonly waitingRoomEnabled?: boolean;
   };
-  
+
   // Error handling and retries
   readonly errors: readonly BotError[];
   readonly retryCount: number;
   readonly lastError?: string;
-  
+
   readonly createdAt: Date;
   readonly updatedAt: Date;
 }
@@ -451,7 +451,12 @@ export interface RecallBot {
  */
 export interface BotError {
   readonly id: string;
-  readonly errorType: 'join_failed' | 'recording_failed' | 'transcription_failed' | 'network_error' | 'auth_error';
+  readonly errorType:
+    | 'join_failed'
+    | 'recording_failed'
+    | 'transcription_failed'
+    | 'network_error'
+    | 'auth_error';
   readonly errorMessage: string;
   readonly errorCode?: string;
   readonly occurredAt: Date;
@@ -468,7 +473,7 @@ export interface MeetingTranscript {
   readonly botId: string;
   readonly meetingId: string;
   readonly advisorId: string;
-  
+
   // Raw transcript data
   readonly rawTranscript: string;
   readonly processedTranscript: string;
@@ -476,12 +481,12 @@ export interface MeetingTranscript {
   readonly language: string;
   readonly duration: number; // in seconds
   readonly wordCount: number;
-  
+
   // Speaker identification and segments
   readonly speakers: readonly TranscriptSpeaker[];
   readonly segments: readonly TranscriptSegment[];
   readonly speakerCount: number;
-  
+
   // AI-enhanced content
   readonly aiAnalysis: {
     readonly summary: string;
@@ -493,7 +498,7 @@ export interface MeetingTranscript {
     readonly topics: readonly string[];
     readonly riskFlags: readonly string[];
   };
-  
+
   // Content generation readiness
   readonly contentGenerationReady: boolean;
   readonly compliancePreCheck: {
@@ -502,7 +507,7 @@ export interface MeetingTranscript {
     readonly clientNamesDetected: readonly string[];
     readonly riskLevel: 'low' | 'medium' | 'high';
   };
-  
+
   readonly createdAt: Date;
   readonly updatedAt: Date;
 }
@@ -554,7 +559,7 @@ export interface GenerateContentRequest {
     readonly platform: MeetingPlatform;
     readonly clientContext?: ClientContext;
   };
-  
+
   // Content generation settings
   readonly contentSettings: {
     readonly platforms: readonly SocialPlatform[];
@@ -565,7 +570,7 @@ export interface GenerateContentRequest {
     readonly includeEmojis: boolean;
     readonly includeCallToAction: boolean;
   };
-  
+
   // Compliance requirements
   readonly complianceRequirements: {
     readonly requireDisclaimers: boolean;
@@ -574,7 +579,7 @@ export interface GenerateContentRequest {
     readonly requiredDisclosures: readonly string[];
     readonly clientPrivacyLevel: 'public' | 'connections_only' | 'private';
   };
-  
+
   // Automation settings
   readonly automationSettings: {
     readonly autoPublish: boolean;
@@ -594,7 +599,7 @@ export interface GeneratedContent {
   readonly advisorId: string;
   readonly meetingId: string;
   readonly platform: SocialPlatform;
-  
+
   // Content details
   readonly content: {
     readonly originalContent: string;
@@ -604,7 +609,7 @@ export interface GeneratedContent {
     readonly callToAction?: string;
     readonly mediaRecommendations: readonly MediaRecommendation[];
   };
-  
+
   // AI generation metadata
   readonly aiMetadata: {
     readonly model: string;
@@ -615,18 +620,18 @@ export interface GeneratedContent {
     readonly reasoning: string;
     readonly alternatives: readonly string[];
   };
-  
+
   // Compliance status
   readonly complianceStatus: 'pending' | 'approved' | 'rejected' | 'requires_modification';
   readonly complianceValidationId?: string;
   readonly riskScore: number; // 0-100
   readonly complianceFlags: readonly string[];
-  
+
   // Publishing status
   readonly publishingStatus: 'draft' | 'scheduled' | 'published' | 'failed' | 'cancelled';
   readonly publishedPostId?: string;
   readonly publishingError?: string;
-  
+
   readonly createdAt: Date;
   readonly updatedAt: Date;
 }
@@ -673,26 +678,26 @@ export interface JobDefinition {
   readonly type: JobType;
   readonly priority: 'low' | 'normal' | 'high' | 'critical';
   readonly payload: JobPayload;
-  
+
   // Scheduling
   readonly scheduledFor: Date;
   readonly delay: number; // in milliseconds
   readonly maxAttempts: number;
   readonly backoffStrategy: 'fixed' | 'exponential' | 'linear';
-  
+
   // Execution tracking
   readonly status: 'pending' | 'running' | 'completed' | 'failed' | 'cancelled' | 'retrying';
   readonly attempts: readonly JobAttempt[];
   readonly currentAttempt: number;
   readonly lastAttemptAt?: Date;
   readonly completedAt?: Date;
-  
+
   // Dependencies and relationships
   readonly dependsOn: readonly string[]; // Other job IDs
   readonly tags: readonly string[];
   readonly userId: string;
   readonly advisorId?: string;
-  
+
   readonly createdAt: Date;
   readonly updatedAt: Date;
 }
@@ -714,7 +719,7 @@ export interface JobAttempt {
 /**
  * Job payload types for different job categories
  */
-export type JobPayload = 
+export type JobPayload =
   | BotSchedulingPayload
   | ContentGenerationPayload
   | ComplianceValidationPayload
@@ -780,7 +785,14 @@ export interface SystemHealth {
  * Individual service health status
  */
 export interface ServiceHealth {
-  readonly service: 'database' | 'redis' | 'openai' | 'recall_ai' | 'google_calendar' | 'linkedin' | 'facebook';
+  readonly service:
+    | 'database'
+    | 'redis'
+    | 'openai'
+    | 'recall_ai'
+    | 'google_calendar'
+    | 'linkedin'
+    | 'facebook';
   readonly status: 'healthy' | 'degraded' | 'unhealthy' | 'unknown';
   readonly responseTime: number; // in milliseconds
   readonly uptime: number; // percentage
@@ -848,7 +860,7 @@ export interface UserSettings {
   readonly id: string;
   readonly userId: string;
   readonly advisorId: string;
-  
+
   // Bot and automation settings
   readonly botSettings: {
     readonly defaultJoinMinutesBefore: number;
@@ -858,7 +870,7 @@ export interface UserSettings {
     readonly autoGenerateContent: boolean;
     readonly autoPublishContent: boolean;
   };
-  
+
   // Content generation preferences
   readonly contentPreferences: {
     readonly defaultTone: ContentTone;
@@ -868,7 +880,7 @@ export interface UserSettings {
     readonly preferredPlatforms: readonly SocialPlatform[];
     readonly customPromptTemplate?: string;
   };
-  
+
   // Compliance and approval settings
   readonly complianceSettings: {
     readonly requireManualApproval: boolean;
@@ -877,7 +889,7 @@ export interface UserSettings {
     readonly defaultDisclaimers: readonly string[];
     readonly restrictedHashtags: readonly string[];
   };
-  
+
   // Notification preferences
   readonly notificationSettings: {
     readonly emailNotifications: boolean;
@@ -891,7 +903,7 @@ export interface UserSettings {
       readonly timeZone: string;
     };
   };
-  
+
   readonly createdAt: Date;
   readonly updatedAt: Date;
 }
@@ -906,7 +918,7 @@ export interface AutomationConfiguration {
   readonly name: string;
   readonly description: string;
   readonly isActive: boolean;
-  
+
   // Trigger conditions
   readonly triggers: {
     readonly onMeetingEnd: boolean;
@@ -915,7 +927,7 @@ export interface AutomationConfiguration {
     readonly onMeetingType: readonly string[];
     readonly onClientType: readonly string[];
   };
-  
+
   // Content generation rules
   readonly contentRules: {
     readonly platforms: readonly SocialPlatform[];
@@ -925,7 +937,7 @@ export interface AutomationConfiguration {
     readonly hashtagStrategy: 'auto' | 'predefined' | 'none';
     readonly predefinedHashtags: readonly string[];
   };
-  
+
   // Approval and publishing
   readonly approvalWorkflow: {
     readonly requireApproval: boolean;
@@ -933,7 +945,7 @@ export interface AutomationConfiguration {
     readonly autoPublishAfterApproval: boolean;
     readonly publishDelay: number; // in minutes
   };
-  
+
   readonly createdAt: Date;
   readonly updatedAt: Date;
 }
@@ -957,7 +969,7 @@ export enum SocialPlatform {
   LINKEDIN = 'linkedin',
   FACEBOOK = 'facebook',
   TWITTER = 'twitter',
-  INSTAGRAM = 'instagram'
+  INSTAGRAM = 'instagram',
 }
 
 export enum ContentTone {
@@ -965,13 +977,13 @@ export enum ContentTone {
   CASUAL = 'casual',
   ENTHUSIASTIC = 'enthusiastic',
   INFORMATIVE = 'informative',
-  AUTHORITATIVE = 'authoritative'
+  AUTHORITATIVE = 'authoritative',
 }
 
 export enum ContentLength {
-  SHORT = 'short',     // 50-150 chars
-  MEDIUM = 'medium',   // 150-500 chars
-  LONG = 'long'        // 500+ chars
+  SHORT = 'short', // 50-150 chars
+  MEDIUM = 'medium', // 150-500 chars
+  LONG = 'long', // 500+ chars
 }
 
 export enum ContentType {
@@ -980,7 +992,7 @@ export enum ContentType {
   STORY = 'story',
   ANNOUNCEMENT = 'announcement',
   EDUCATIONAL = 'educational',
-  MARKET_UPDATE = 'market_update'
+  MARKET_UPDATE = 'market_update',
 }
 
 export enum MeetingPlatform {
@@ -988,7 +1000,7 @@ export enum MeetingPlatform {
   GOOGLE_MEET = 'google-meet',
   MICROSOFT_TEAMS = 'microsoft-teams',
   WEBEX = 'webex',
-  OTHER = 'other'
+  OTHER = 'other',
 }
 
 export enum CalendarProvider {
@@ -996,7 +1008,7 @@ export enum CalendarProvider {
   OUTLOOK = 'outlook',
   APPLE = 'apple',
   EXCHANGE = 'exchange',
-  OTHER = 'other'
+  OTHER = 'other',
 }
 
 export enum BotStatus {
@@ -1006,7 +1018,7 @@ export enum BotStatus {
   PROCESSING = 'processing',
   COMPLETED = 'completed',
   FAILED = 'failed',
-  CANCELLED = 'cancelled'
+  CANCELLED = 'cancelled',
 }
 
 export enum RecordingStatus {
@@ -1014,7 +1026,7 @@ export enum RecordingStatus {
   RECORDING = 'recording',
   PROCESSING = 'processing',
   COMPLETED = 'completed',
-  FAILED = 'failed'
+  FAILED = 'failed',
 }
 
 export enum TranscriptStatus {
@@ -1022,7 +1034,7 @@ export enum TranscriptStatus {
   PROCESSING = 'processing',
   COMPLETED = 'completed',
   FAILED = 'failed',
-  NOT_AVAILABLE = 'not_available'
+  NOT_AVAILABLE = 'not_available',
 }
 
 export enum PublishingStatus {
@@ -1031,7 +1043,7 @@ export enum PublishingStatus {
   PUBLISHING = 'publishing',
   PUBLISHED = 'published',
   FAILED = 'failed',
-  CANCELLED = 'cancelled'
+  CANCELLED = 'cancelled',
 }
 
 export enum JobType {
@@ -1041,7 +1053,7 @@ export enum JobType {
   SOCIAL_PUBLISHING = 'social_publishing',
   EMAIL_GENERATION = 'email_generation',
   TRANSCRIPT_PROCESSING = 'transcript_processing',
-  SYSTEM_MAINTENANCE = 'system_maintenance'
+  SYSTEM_MAINTENANCE = 'system_maintenance',
 }
 
 export enum NotificationType {
@@ -1052,12 +1064,22 @@ export enum NotificationType {
   COMPLIANCE_REVIEW_NEEDED = 'compliance_review_needed',
   CONTENT_PUBLISHED = 'content_published',
   SYSTEM_ALERT = 'system_alert',
-  ERROR_NOTIFICATION = 'error_notification'
+  ERROR_NOTIFICATION = 'error_notification',
 }
 
 // ============================================================================
 // CONFIGURATION INTERFACES
 // ============================================================================
+
+/**
+ * Google Calendar API configuration
+ */
+export interface GoogleCalendarConfig {
+  readonly clientId: string;
+  readonly clientSecret: string;
+  readonly redirectUri: string;
+  readonly scopes: readonly string[];
+}
 
 /**
  * Bot configuration for meeting recording
@@ -1096,6 +1118,85 @@ export interface CacheConfiguration {
   readonly strategy: 'lru' | 'lfu' | 'fifo';
   readonly namespace: string;
   readonly compression: boolean;
+}
+
+// ============================================================================
+// API REQUEST/RESPONSE TYPES (Architecture-Aligned)
+// ============================================================================
+
+/**
+ * LinkedIn API Response Types
+ */
+export interface LinkedInTokenResponse {
+  readonly access_token: string;
+  readonly expires_in: number;
+  readonly refresh_token?: string;
+  readonly scope: string;
+}
+
+export interface LinkedInProfileResponse {
+  readonly id: string;
+  readonly firstName: {
+    readonly localized: {
+      readonly [key: string]: string;
+    };
+  };
+  readonly lastName: {
+    readonly localized: {
+      readonly [key: string]: string;
+    };
+  };
+  readonly profilePicture?: {
+    readonly displayImage: string;
+    readonly elements: Array<{
+      readonly identifiers: Array<{
+        readonly identifier: string;
+      }>;
+    }>;
+  };
+}
+
+export interface LinkedInPostResponse {
+  readonly id: string;
+  readonly activity: string;
+}
+
+export interface LinkedInPostStatsResponse {
+  readonly numLikes: number;
+  readonly numComments: number;
+  readonly numShares: number;
+  readonly numClicks: number;
+  readonly numSaves: number;
+}
+
+// ============================================================================
+// API REQUEST/RESPONSE TYPES (Architecture-Aligned)
+// ============================================================================
+
+/**
+ * Calendar events API response data
+ * Maps to: GET/POST /api/calendar/events response
+ */
+export interface CalendarEventsResponse {
+  readonly events: CalendarEvent[];
+  readonly totalCount: number;
+  readonly source: 'google_calendar' | 'mock';
+  readonly timeRange?: {
+    readonly start: string;
+    readonly end: string;
+  };
+}
+
+/**
+ * Calendar events API request data
+ * Maps to: POST /api/calendar/events request body
+ */
+export interface CalendarEventsRequest {
+  readonly action: 'fetch';
+  readonly useMockData?: boolean;
+  readonly maxResults?: number;
+  readonly timeMin?: Date;
+  readonly timeMax?: Date;
 }
 
 // ============================================================================

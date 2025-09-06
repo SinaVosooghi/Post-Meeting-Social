@@ -3,15 +3,14 @@
  * Transforms meeting content into social media posts
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
+import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { generatePost } from '@/lib/content-generator';
+import type { ApiResponse, GeneratedContent, ClientMeeting } from '@/types/master-interfaces';
 import {
   SocialPlatform,
   ContentTone,
-  ApiResponse,
-  GeneratedContent,
-  ClientMeeting,
   MeetingPlatform,
   RecordingStatus,
   TranscriptStatus,
@@ -53,7 +52,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Parse and validate request body
-    const body = await request.json();
+    const body = (await request.json()) as z.infer<typeof generatePostSchema>;
     const validationResult = generatePostSchema.safeParse(body);
 
     if (!validationResult.success) {
@@ -179,7 +178,7 @@ export async function POST(request: NextRequest) {
     const post = await generatePost({
       meeting: mockMeeting,
       platform,
-      tone: tone || 'professional',
+      tone: tone !== null ? tone : 'professional',
       includeHashtags: true,
     });
 

@@ -1,35 +1,30 @@
+'use client';
+
 /**
  * MeetingPostCard Component
  * Handles meeting selection and LinkedIn post creation
  */
 
-import { useState } from 'react';
+import * as React from 'react';
 import { Card, CardHeader, CardContent, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { Badge } from '@/components/ui/badge';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { Spinner } from '@/components/ui/spinner';
-import {
-  ClientMeeting,
-  SocialMediaPost,
-  SocialPlatform,
-  ContentTone,
-  GeneratedContent,
-} from '@/types/master-interfaces';
+import type { ClientMeeting, SocialMediaPost, GeneratedContent } from '@/types/master-interfaces';
+import { SocialPlatform, ContentTone } from '@/types/master-interfaces';
 
 export interface MeetingPostCardProps extends React.HTMLAttributes<HTMLDivElement> {
   key?: string;
   meeting: ClientMeeting;
-  onPublish?: (post: SocialMediaPost) => Promise<void>;
 }
 
-export function MeetingPostCard({ meeting, onPublish }: MeetingPostCardProps) {
-  const [content, setContent] = useState('');
-  const [isPublishing, setIsPublishing] = useState(false);
-  const [riskScore, setRiskScore] = useState(0);
-  const [validationIssues, setValidationIssues] = useState<string[]>([]);
-  const [publishError, setPublishError] = useState<string | null>(null);
+export function MeetingPostCard({ meeting }: MeetingPostCardProps) {
+  const [content, setContent] = React.useState('');
+  const [isPublishing, setIsPublishing] = React.useState(false);
+  const [riskScore, setRiskScore] = React.useState(0);
+  const [validationIssues, setValidationIssues] = React.useState<string[]>([]);
+  const [publishError, setPublishError] = React.useState<string | null>(null);
 
   // Generate initial content from meeting
   const generateContent = async () => {
@@ -45,12 +40,16 @@ export function MeetingPostCard({ meeting, onPublish }: MeetingPostCardProps) {
         }),
       });
 
-      const data = await response.json();
-      if (!data.success) {
-        throw new Error(data.error.message);
+      const data = (await response.json()) as {
+        success: boolean;
+        data?: GeneratedContent;
+        error?: { message: string };
+      };
+      if (!data.success || !data.data) {
+        throw new Error(data.error?.message || 'Failed to generate content');
       }
 
-      const generatedContent = data.data as GeneratedContent;
+      const generatedContent = data.data;
       setContent(generatedContent.content.finalContent);
       setRiskScore(generatedContent.riskScore);
       setValidationIssues(generatedContent.complianceFlags);
@@ -71,9 +70,17 @@ export function MeetingPostCard({ meeting, onPublish }: MeetingPostCardProps) {
         }),
       });
 
-      const data = await response.json();
-      if (!data.success) {
-        throw new Error(data.error.message);
+      const data = (await response.json()) as {
+        success: boolean;
+        data?: {
+          riskScore: number;
+          issues: string[];
+          isValid: boolean;
+        };
+        error?: { message: string };
+      };
+      if (!data.success || !data.data) {
+        throw new Error(data.error?.message || 'Failed to validate content');
       }
 
       setRiskScore(data.data.riskScore);
@@ -109,14 +116,13 @@ export function MeetingPostCard({ meeting, onPublish }: MeetingPostCardProps) {
         }),
       });
 
-      const data = await response.json();
-      if (!data.success) {
-        throw new Error(data.error.message);
-      }
-
-      // Call onPublish callback if provided
-      if (onPublish) {
-        await onPublish(data.data);
+      const data = (await response.json()) as {
+        success: boolean;
+        data?: SocialMediaPost;
+        error?: { message: string };
+      };
+      if (!data.success || !data.data) {
+        throw new Error(data.error?.message || 'Failed to publish content');
       }
 
       // Clear form
@@ -138,23 +144,31 @@ export function MeetingPostCard({ meeting, onPublish }: MeetingPostCardProps) {
             <h3 className="text-lg font-semibold">{meeting.title}</h3>
             <p className="text-sm text-gray-500">{new Date(meeting.startTime).toLocaleString()}</p>
           </div>
-          <Badge variant={riskScore > 50 ? 'destructive' : 'default'}>
+          <div
+            className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 ${riskScore > 50 ? 'bg-red-500 text-white' : 'bg-gray-500 text-white'}`}
+          >
             Risk Score: {riskScore}
-          </Badge>
+          </div>
         </div>
       </CardHeader>
 
       <CardContent>
         <div className="space-y-4">
           <div className="flex justify-end">
-            <Button variant="outline" onClick={generateContent} disabled={isPublishing}>
+            <Button
+              variant="outline"
+              onClick={() => {
+                void generateContent();
+              }}
+              disabled={isPublishing}
+            >
               Generate Content
             </Button>
           </div>
 
           <Textarea
             value={content}
-            onChange={e => setContent(e.target.value)}
+            onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setContent(e.target.value)}
             placeholder="Write your LinkedIn post..."
             className="min-h-[200px]"
             disabled={isPublishing}
@@ -165,7 +179,7 @@ export function MeetingPostCard({ meeting, onPublish }: MeetingPostCardProps) {
               <AlertTitle>Content Issues</AlertTitle>
               <AlertDescription>
                 <ul className="list-disc pl-4">
-                  {validationIssues.map((issue, index) => (
+                  {validationIssues.map((issue: string, index: number) => (
                     <li key={index}>{issue}</li>
                   ))}
                 </ul>
@@ -184,7 +198,12 @@ export function MeetingPostCard({ meeting, onPublish }: MeetingPostCardProps) {
 
       <CardFooter className="flex justify-between">
         <div className="text-sm text-gray-500">{content.length} characters</div>
-        <Button onClick={handlePublish} disabled={isPublishing || !content.trim()}>
+        <Button
+          onClick={() => {
+            void handlePublish();
+          }}
+          disabled={isPublishing || !content.trim()}
+        >
           {isPublishing ? (
             <>
               <Spinner className="mr-2" />

@@ -3,7 +3,8 @@
  * Transforms meeting content into social media posts
  */
 
-import { ClientMeeting, SocialPlatform } from '@/types/master-interfaces';
+import type { ClientMeeting } from '@/types/master-interfaces';
+import { SocialPlatform } from '@/types/master-interfaces';
 import { validateLinkedInContent, optimizeContentForLinkedIn } from '@/lib/linkedin';
 
 interface GeneratePostOptions {

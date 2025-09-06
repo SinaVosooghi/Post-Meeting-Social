@@ -1,10 +1,10 @@
 /**
  * MASTER INTERFACES - Post-Meeting Social Media Generator
  * Comprehensive TypeScript definitions aligned with MASTER_ARCHITECTURE.md
- * 
+ *
  * This file contains ALL interfaces needed for the Jump.ai challenge implementation.
  * Every interface maps directly to components in our production architecture.
- * 
+ *
  * ALIGNED WITH: MASTER_ARCHITECTURE.md v2025-09-05
  * TOTAL INTERFACES: 32 comprehensive interfaces
  * COVERAGE: Financial Advisory Domain, AI Content, Social Publishing, Infrastructure
@@ -148,20 +148,20 @@ export interface UserSettings {
 export enum AccountType {
   OAUTH = 'oauth',
   EMAIL = 'email',
-  CREDENTIALS = 'credentials'
+  CREDENTIALS = 'credentials',
 }
 
 export enum OAuthProvider {
   GOOGLE = 'google',
   LINKEDIN = 'linkedin',
-  FACEBOOK = 'facebook'
+  FACEBOOK = 'facebook',
 }
 
 export enum MeetingPlatform {
   ZOOM = 'zoom',
   GOOGLE_MEET = 'google-meet',
   MICROSOFT_TEAMS = 'microsoft-teams',
-  OTHER = 'other'
+  OTHER = 'other',
 }
 
 export enum TranscriptStatus {
@@ -170,34 +170,34 @@ export enum TranscriptStatus {
   PROCESSING = 'processing',
   COMPLETED = 'completed',
   FAILED = 'failed',
-  NOT_AVAILABLE = 'not-available'
+  NOT_AVAILABLE = 'not-available',
 }
 
 export enum AttendeeResponseStatus {
   ACCEPTED = 'accepted',
   DECLINED = 'declined',
   TENTATIVE = 'tentative',
-  NEEDS_ACTION = 'needsAction'
+  NEEDS_ACTION = 'needsAction',
 }
 
 export enum SocialPlatform {
   LINKEDIN = 'linkedin',
   FACEBOOK = 'facebook',
-  TWITTER = 'twitter'
+  TWITTER = 'twitter',
 }
 
 export enum PostStatus {
   DRAFT = 'draft',
   SCHEDULED = 'scheduled',
   PUBLISHED = 'published',
-  FAILED = 'failed'
+  FAILED = 'failed',
 }
 
 export enum CalendarProvider {
   GOOGLE = 'google',
   OUTLOOK = 'outlook',
   APPLE = 'apple',
-  OTHER = 'other'
+  OTHER = 'other',
 }
 
 export enum BotStatus {
@@ -206,7 +206,7 @@ export enum BotStatus {
   RECORDING = 'recording',
   COMPLETED = 'completed',
   FAILED = 'failed',
-  CANCELLED = 'cancelled'
+  CANCELLED = 'cancelled',
 }
 
 // ============================================================================
@@ -242,13 +242,13 @@ export enum ContentTone {
   PROFESSIONAL = 'professional',
   CASUAL = 'casual',
   ENTHUSIASTIC = 'enthusiastic',
-  INFORMATIVE = 'informative'
+  INFORMATIVE = 'informative',
 }
 
 export enum ContentLength {
-  SHORT = 'short',    // ~100 characters
-  MEDIUM = 'medium',  // ~200 characters
-  LONG = 'long'       // ~280 characters
+  SHORT = 'short', // ~100 characters
+  MEDIUM = 'medium', // ~200 characters
+  LONG = 'long', // ~280 characters
 }
 
 // ============================================================================
@@ -313,7 +313,7 @@ export enum RecallBotStatus {
   JOINED = 'joined',
   RECORDING = 'recording',
   DONE = 'done',
-  FAILED = 'failed'
+  FAILED = 'failed',
 }
 
 /**
