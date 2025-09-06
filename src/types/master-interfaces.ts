@@ -1761,3 +1761,29 @@ export type LegacyUserSettings = UserSettings;
  * @deprecated Use AutomationConfiguration instead - remove after migration
  */
 export type Automation = AutomationConfiguration;
+
+// ============================================================================
+// DEEPSEEK REVIEW - MISSING UTILITY TYPES
+// ============================================================================
+
+/**
+ * Simplified audit entry for general use
+ * Maps to: Audit trail in compliance workflows
+ */
+export interface AuditEntry {
+  readonly timestamp: Date;
+  readonly action: string;
+  readonly userId: string;
+  readonly details: Record<string, unknown>;
+}
+
+/**
+ * Simplified compliance check for general use
+ * Maps to: Individual compliance rule validation
+ */
+export interface ComplianceCheck {
+  readonly ruleId: string;
+  readonly description: string;
+  readonly passed: boolean;
+  readonly details?: string;
+}
