@@ -1,25 +1,41 @@
 /**
  * LinkedIn API Integration
  * Post-Meeting Social Media Content Generator
- * 
+ *
  * Handles LinkedIn OAuth, token management, and content publishing
  * Aligned with SocialMediaToken and SocialMediaPost interfaces
  */
 
-import type { 
-  SocialMediaToken, 
-  SocialEngagement
+import type {
+  SocialMediaToken,
+  SocialEngagement,
+  _LinkedInTokenResponse,
+  _LinkedInProfileResponse,
+  _LinkedInPostResponse,
+  _LinkedInPostStatsResponse,
 } from '@/types/master-interfaces';
 import { SocialPlatform } from '@/types/master-interfaces';
+import { socialLogger } from './logger';
 
 // ============================================================================
 // LINKEDIN CONFIGURATION
 // ============================================================================
 
+// Validate required environment variables
+const clientId = process.env.LINKEDIN_CLIENT_ID;
+const clientSecret = process.env.LINKEDIN_CLIENT_SECRET;
+const redirectUri = process.env.NEXTAUTH_URL
+  ? `${process.env.NEXTAUTH_URL}/api/auth/callback/linkedin`
+  : '';
+
+if (!clientId || !clientSecret || !redirectUri) {
+  socialLogger.warn('Missing LinkedIn configuration. Some features may be disabled.');
+}
+
 const LINKEDIN_CONFIG = {
-  clientId: process.env.LINKEDIN_CLIENT_ID!,
-  clientSecret: process.env.LINKEDIN_CLIENT_SECRET!,
-  redirectUri: process.env.NEXTAUTH_URL + '/api/auth/callback/linkedin',
+  clientId: clientId ?? '',
+  clientSecret: clientSecret ?? '',
+  redirectUri,
   scopes: [
     'openid',
     'profile',
@@ -92,8 +108,13 @@ export async function exchangeLinkedInCode(
       throw new Error(`LinkedIn token exchange failed: ${response.status} - ${errorData}`);
     }
 
-    const data = await response.json();
-    
+    const data = (await response.json()) as {
+      access_token: string;
+      expires_in: number;
+      refresh_token?: string;
+      scope: string;
+    };
+
     return {
       accessToken: data.access_token,
       expiresIn: data.expires_in,
@@ -101,8 +122,13 @@ export async function exchangeLinkedInCode(
       scope: data.scope,
     };
   } catch (error) {
-    console.error('LinkedIn OAuth error:', error);
-    throw new Error(`Failed to exchange LinkedIn authorization code: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    socialLogger.error(
+      'LinkedIn OAuth error',
+      error instanceof Error ? error : new Error(String(error))
+    );
+    throw new Error(
+      `Failed to exchange LinkedIn authorization code: ${error instanceof Error ? error.message : 'Unknown error'}`
+    );
   }
 }
 
@@ -133,16 +159,25 @@ export async function refreshLinkedInToken(refreshToken: string): Promise<{
       throw new Error(`LinkedIn token refresh failed: ${response.status} - ${errorData}`);
     }
 
-    const data = await response.json();
-    
+    const data = (await response.json()) as {
+      access_token: string;
+      expires_in: number;
+      refresh_token?: string;
+    };
+
     return {
       accessToken: data.access_token,
       expiresIn: data.expires_in,
-      refreshToken: data.refresh_token || refreshToken, // Use new or keep existing
+      refreshToken: data.refresh_token ?? refreshToken, // Use new or keep existing
     };
   } catch (error) {
-    console.error('LinkedIn token refresh error:', error);
-    throw new Error(`Failed to refresh LinkedIn token: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    socialLogger.error(
+      'LinkedIn token refresh error',
+      error instanceof Error ? error : new Error(String(error))
+    );
+    throw new Error(
+      `Failed to refresh LinkedIn token: ${error instanceof Error ? error.message : 'Unknown error'}`
+    );
   }
 }
 
@@ -162,37 +197,71 @@ export async function getLinkedInProfile(accessToken: string): Promise<{
 }> {
   try {
     const [profileResponse, emailResponse] = await Promise.all([
-      fetch(`${LINKEDIN_CONFIG.apiBaseUrl}/people/~:(id,firstName,lastName,profilePicture(displayImage~:playableStreams))`, {
-        headers: {
-          'Authorization': `Bearer ${accessToken}`,
-          'Content-Type': 'application/json',
-        },
-      }),
-      fetch(`${LINKEDIN_CONFIG.apiBaseUrl}/emailAddress?q=members&projection=(elements*(handle~))`, {
-        headers: {
-          'Authorization': `Bearer ${accessToken}`,
-          'Content-Type': 'application/json',
-        },
-      }),
+      fetch(
+        `${LINKEDIN_CONFIG.apiBaseUrl}/people/~:(id,firstName,lastName,profilePicture(displayImage~:playableStreams))`,
+        {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            'Content-Type': 'application/json',
+          },
+        }
+      ),
+      fetch(
+        `${LINKEDIN_CONFIG.apiBaseUrl}/emailAddress?q=members&projection=(elements*(handle~))`,
+        {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            'Content-Type': 'application/json',
+          },
+        }
+      ),
     ]);
 
     if (!profileResponse.ok || !emailResponse.ok) {
-      throw new Error(`LinkedIn API error: Profile ${profileResponse.status}, Email ${emailResponse.status}`);
+      throw new Error(
+        `LinkedIn API error: Profile ${profileResponse.status}, Email ${emailResponse.status}`
+      );
     }
 
-    const profileData = await profileResponse.json();
-    const emailData = await emailResponse.json();
+    const profileData = (await profileResponse.json()) as {
+      id: string;
+      firstName: { localized: { en_US: string } };
+      lastName: { localized: { en_US: string } };
+      profilePicture?: {
+        'displayImage~'?: {
+          elements?: Array<{
+            identifiers?: Array<{
+              identifier?: string;
+            }>;
+          }>;
+        };
+      };
+    };
+
+    const emailData = (await emailResponse.json()) as {
+      elements: Array<{
+        'handle~': {
+          emailAddress: string;
+        };
+      }>;
+    };
 
     return {
       id: profileData.id,
       firstName: profileData.firstName.localized.en_US,
       lastName: profileData.lastName.localized.en_US,
       email: emailData.elements[0]['handle~'].emailAddress,
-      profilePicture: profileData.profilePicture?.['displayImage~']?.elements?.[0]?.identifiers?.[0]?.identifier,
+      profilePicture:
+        profileData.profilePicture?.['displayImage~']?.elements?.[0]?.identifiers?.[0]?.identifier,
     };
   } catch (error) {
-    console.error('LinkedIn profile fetch error:', error);
-    throw new Error(`Failed to get LinkedIn profile: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    socialLogger.error(
+      'LinkedIn profile fetch error',
+      error instanceof Error ? error : new Error(String(error))
+    );
+    throw new Error(
+      `Failed to get LinkedIn profile: ${error instanceof Error ? error.message : 'Unknown error'}`
+    );
   }
 }
 
@@ -215,9 +284,9 @@ export async function postToLinkedIn(
   try {
     // Get user profile for posting
     const profile = await getLinkedInProfile(accessToken);
-    
+
     // Prepare post content
-    const postText = content.hashtags 
+    const postText = content.hashtags
       ? `${content.text}\n\n${content.hashtags.map(tag => `#${tag.replace('#', '')}`).join(' ')}`
       : content.text;
 
@@ -232,10 +301,12 @@ export async function postToLinkedIn(
           },
           shareMediaCategory: 'NONE',
           ...(content.linkUrl && {
-            media: [{
-              status: 'READY',
-              originalUrl: content.linkUrl,
-            }],
+            media: [
+              {
+                status: 'READY',
+                originalUrl: content.linkUrl,
+              },
+            ],
           }),
         },
       },
@@ -247,7 +318,7 @@ export async function postToLinkedIn(
     const response = await fetch(`${LINKEDIN_CONFIG.apiBaseUrl}/ugcPosts`, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${accessToken}`,
+        Authorization: `Bearer ${accessToken}`,
         'Content-Type': 'application/json',
         'X-Restli-Protocol-Version': '2.0.0',
       },
@@ -259,17 +330,23 @@ export async function postToLinkedIn(
       throw new Error(`LinkedIn posting failed: ${response.status} - ${errorData}`);
     }
 
-    const responseData = await response.json();
-    const postId = responseData.id;
-    
+    const responseData = (await response.json()) as {
+      id: string;
+    };
+
     return {
-      postId,
-      postUrl: `https://www.linkedin.com/feed/update/${postId}`,
+      postId: responseData.id,
+      postUrl: `https://www.linkedin.com/feed/update/${responseData.id}`,
       publishedAt: new Date(),
     };
   } catch (error) {
-    console.error('LinkedIn posting error:', error);
-    throw new Error(`Failed to post to LinkedIn: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    socialLogger.error(
+      'LinkedIn posting error',
+      error instanceof Error ? error : new Error(String(error))
+    );
+    throw new Error(
+      `Failed to post to LinkedIn: ${error instanceof Error ? error.message : 'Unknown error'}`
+    );
   }
 }
 
@@ -285,7 +362,7 @@ export async function getLinkedInPostAnalytics(
       `${LINKEDIN_CONFIG.apiBaseUrl}/socialActions/${postId}/statistics`,
       {
         headers: {
-          'Authorization': `Bearer ${accessToken}`,
+          Authorization: `Bearer ${accessToken}`,
           'Content-Type': 'application/json',
         },
       }
@@ -302,17 +379,26 @@ export async function getLinkedInPostAnalytics(
       };
     }
 
-    const data = await response.json();
-    
+    const data = (await response.json()) as {
+      numLikes?: number;
+      numComments?: number;
+      numShares?: number;
+      numClicks?: number;
+      numSaves?: number;
+    };
+
     return {
-      likes: data.numLikes || 0,
-      comments: data.numComments || 0,
-      shares: data.numShares || 0,
-      clicks: data.numClicks || 0,
-      saves: data.numSaves || 0,
+      likes: data.numLikes ?? 0,
+      comments: data.numComments ?? 0,
+      shares: data.numShares ?? 0,
+      clicks: data.numClicks ?? 0,
+      saves: data.numSaves ?? 0,
     };
   } catch (error) {
-    console.error('LinkedIn analytics error:', error);
+    socialLogger.error(
+      'LinkedIn analytics error:',
+      error instanceof Error ? error : new Error(String(error))
+    );
     // Return default engagement on error
     return {
       likes: 0,
@@ -335,14 +421,17 @@ export async function validateLinkedInToken(accessToken: string): Promise<boolea
   try {
     const response = await fetch(`${LINKEDIN_CONFIG.apiBaseUrl}/people/~:(id)`, {
       headers: {
-        'Authorization': `Bearer ${accessToken}`,
+        Authorization: `Bearer ${accessToken}`,
         'Content-Type': 'application/json',
       },
     });
 
     return response.ok;
   } catch (error) {
-    console.error('LinkedIn token validation error:', error);
+    socialLogger.error(
+      'LinkedIn token validation error:',
+      error instanceof Error ? error : new Error(String(error))
+    );
     return false;
   }
 }
@@ -425,8 +514,10 @@ export class LinkedInRateLimiter {
    */
   getResetTime(userId: string): number {
     const userLimits = this.requestCounts.get(userId);
-    if (!userLimits) return 0;
-    
+    if (!userLimits) {
+      return 0;
+    }
+
     const now = Date.now();
     return Math.max(0, userLimits.resetTime - now);
   }
@@ -435,12 +526,15 @@ export class LinkedInRateLimiter {
 /**
  * Handles LinkedIn API errors with retry logic
  */
-export function handleLinkedInError(error: unknown, attempt: number): {
+export function handleLinkedInError(
+  error: unknown,
+  attempt: number
+): {
   shouldRetry: boolean;
   retryAfter: number; // in milliseconds
   errorType: 'rate_limit' | 'auth_error' | 'content_rejected' | 'network_error' | 'unknown';
 } {
-  const errorMessage = (error as Error)?.message || '';
+  const errorMessage = (error as Error)?.message ?? '';
   const statusCode = (error as { response?: { status?: number } })?.response?.status;
 
   // Rate limiting
@@ -505,7 +599,7 @@ export function optimizeContentForLinkedIn(content: {
 } {
   const warnings: string[] = [];
   let optimizedText = content.text;
-  let hashtags = content.hashtags || [];
+  let hashtags = content.hashtags ?? [];
 
   // Check character limit
   if (optimizedText.length > LINKEDIN_LIMITS.maxContentLength) {
@@ -552,10 +646,10 @@ export function validateLinkedInContent(content: string): {
 
   // Check for investment advice (high risk)
   const investmentAdviceKeywords = ['buy', 'sell', 'invest in', 'guaranteed returns', 'stock tip'];
-  const hasInvestmentAdvice = investmentAdviceKeywords.some(keyword => 
+  const hasInvestmentAdvice = investmentAdviceKeywords.some(keyword =>
     content.toLowerCase().includes(keyword.toLowerCase())
   );
-  
+
   if (hasInvestmentAdvice) {
     issues.push('Content may contain investment advice - requires compliance review');
     riskScore += 40;
@@ -563,10 +657,10 @@ export function validateLinkedInContent(content: string): {
 
   // Check for specific financial products (medium risk)
   const productKeywords = ['401k', 'ira', 'mutual fund', 'etf', 'bond', 'stock'];
-  const mentionsProducts = productKeywords.some(keyword => 
+  const mentionsProducts = productKeywords.some(keyword =>
     content.toLowerCase().includes(keyword.toLowerCase())
   );
-  
+
   if (mentionsProducts) {
     riskScore += 20;
   }
@@ -579,9 +673,10 @@ export function validateLinkedInContent(content: string): {
   }
 
   // Check for required disclaimers
-  const hasDisclaimer = content.toLowerCase().includes('investment') && 
+  const hasDisclaimer =
+    content.toLowerCase().includes('investment') &&
     (content.toLowerCase().includes('advice') || content.toLowerCase().includes('recommendation'));
-  
+
   if (hasDisclaimer && !content.toLowerCase().includes('not investment advice')) {
     issues.push('Investment-related content requires disclaimer');
     riskScore += 25;
@@ -635,7 +730,7 @@ export async function createMockLinkedInPost(
   await new Promise(resolve => setTimeout(resolve, 1000));
 
   const postId = `mock-linkedin-post-${Date.now()}`;
-  
+
   return {
     postId,
     postUrl: `https://www.linkedin.com/feed/update/urn:li:activity:${postId}`,
