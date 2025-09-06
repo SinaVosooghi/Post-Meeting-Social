@@ -6,17 +6,32 @@
  */
 
 import { google } from 'googleapis';
-import type { CalendarEvent, GoogleCalendarConfig } from '@/types/master-interfaces';
-import { CalendarProvider } from '@/types/master-interfaces';
-
-interface GoogleCalendarAttendee {
-  email?: string;
-  displayName?: string;
-  responseStatus?: 'needsAction' | 'declined' | 'tentative' | 'accepted';
-  organizer?: boolean;
-  optional?: boolean;
-}
+import type { calendar_v3 } from 'googleapis';
+import type { CalendarEvent, GoogleCalendarConfig, GoogleCalendarAttendee } from '@/types';
+import { CalendarProvider } from '@/types';
 import { calendarLogger } from './logger';
+
+// Type guard for Google Calendar events
+function isGoogleCalendarEvent(event: unknown): event is calendar_v3.Schema$Event {
+  return (
+    typeof event === 'object' &&
+    event !== null &&
+    'id' in event &&
+    typeof (event as Record<string, unknown>).id === 'string'
+  );
+}
+
+// Type guard for Google Calendar list entries
+function isGoogleCalendarListEntry(entry: unknown): entry is calendar_v3.Schema$CalendarListEntry {
+  return (
+    typeof entry === 'object' &&
+    entry !== null &&
+    'id' in entry &&
+    typeof (entry as Record<string, unknown>).id === 'string' &&
+    'summary' in entry &&
+    typeof (entry as Record<string, unknown>).summary === 'string'
+  );
+}
 
 // ============================================================================
 // GOOGLE CALENDAR CONFIGURATION
@@ -112,131 +127,109 @@ export async function getUpcomingEvents(
 
     const events = response.data.items ?? [];
 
-    return events.map(
-      (event: {
-        id?: string;
-        summary?: string;
-        description?: string;
-        start?: { dateTime?: string; date?: string; timeZone?: string };
-        end?: { dateTime?: string; date?: string; timeZone?: string };
-        attendees?: Array<{
-          email?: string;
-          displayName?: string;
-          responseStatus?: 'needsAction' | 'declined' | 'tentative' | 'accepted';
-          organizer?: boolean;
-          optional?: boolean;
-        }>;
-        location?: string;
-        organizer?: { email?: string; displayName?: string };
-        recurringEventId?: string;
-        status?: 'confirmed' | 'tentative' | 'cancelled';
-        visibility?: 'default' | 'public' | 'private';
-        created?: string;
-        updated?: string;
-        maxParticipants?: number;
-        maxAttendees?: number;
-        recurrence?: string[];
-      }) => {
-        if (!event.id) {
-          throw new Error('Event ID is missing');
-        }
-
-        const organizer = event.organizer
-          ? {
-              email: event.organizer.email ?? '',
-              name:
-                event.organizer.displayName ??
-                (event.organizer.email ? event.organizer.email.split('@')[0] : 'Unknown'),
-              responseStatus: 'accepted' as 'needsAction' | 'declined' | 'tentative' | 'accepted',
-              isOrganizer: true,
-              isOptional: false,
-              role: 'advisor' as
-                | 'advisor'
-                | 'client'
-                | 'prospect'
-                | 'colleague'
-                | 'compliance_officer',
-            }
-          : {
-              email: 'unknown@example.com',
-              name: 'Unknown Organizer',
-              responseStatus: 'accepted' as 'needsAction' | 'declined' | 'tentative' | 'accepted',
-              isOrganizer: true,
-              isOptional: false,
-              role: 'advisor' as
-                | 'advisor'
-                | 'client'
-                | 'prospect'
-                | 'colleague'
-                | 'compliance_officer',
-            };
-
-        const result: CalendarEvent = {
-          id: event.id,
-          title: event.summary ?? 'Untitled Meeting',
-          description: event.description ?? '',
-          startTime: parseGoogleDate(event.start),
-          endTime: parseGoogleDate(event.end),
-          timeZone: event.start?.timeZone ?? 'UTC',
-          location: event.location ?? '',
-          meetingUrl: extractMeetingUrl(event.description ?? ''),
-          provider: CalendarProvider.GOOGLE,
-          calendarId: event.organizer?.email ?? calendarId,
-          attendees:
-            event.attendees?.map((attendee: GoogleCalendarAttendee) => ({
-              email: attendee.email ?? '',
-              name: ((): string => {
-                const displayName = attendee.displayName;
-                if (displayName) {
-                  return displayName;
-                }
-                const email = attendee.email;
-                if (email) {
-                  return email.split('@')[0];
-                }
-                return 'Unknown';
-              })() as const,
-              responseStatus: attendee.responseStatus ?? 'needsAction',
-              isOrganizer: attendee.organizer ?? false,
-              isOptional: attendee.optional ?? false,
-              role: 'colleague' as
-                | 'advisor'
-                | 'client'
-                | 'prospect'
-                | 'colleague'
-                | 'compliance_officer', // Default role, should be determined by your system
-            })) ?? [],
-          organizer,
-          maxAttendees: event.maxParticipants ?? event.maxAttendees ?? undefined,
-          isRecurring: Boolean(event.recurringEventId),
-          recurrencePattern: event.recurrence
-            ? {
-                frequency: 'monthly', // Default, should be parsed from recurrence rule
-                interval: 1,
-                daysOfWeek: [], // Should be parsed from recurrence rule
-              }
-            : undefined,
-          status: event.status as 'confirmed' | 'tentative' | 'cancelled',
-          visibility: event.visibility as 'default' | 'public' | 'private',
-          botSettings: {
-            enableBot: true,
-            botJoinMinutesBefore: 5,
-            recordingEnabled: true,
-            transcriptionEnabled: true,
-            autoGenerateContent: true,
-          },
-          clientContext: {
-            isClientMeeting: false,
-            clientIds: [],
-            meetingType: 'consultation',
-            confidentialityLevel: 'standard',
-          },
-          createdAt: event.created ? new Date(event.created) : new Date(),
-          updatedAt: event.updated ? new Date(event.updated) : new Date(),
-        };
-        return result;
+    return events.map(event => {
+      if (!isGoogleCalendarEvent(event)) {
+        throw new Error('Invalid event format');
       }
-    );
+      if (!event.id) {
+        throw new Error('Event ID is missing');
+      }
+
+      const organizer = event.organizer
+        ? {
+            email: event.organizer.email ?? '',
+            name:
+              event.organizer.displayName ??
+              (event.organizer.email ? event.organizer.email.split('@')[0] : 'Unknown'),
+            responseStatus: 'accepted' as 'needsAction' | 'declined' | 'tentative' | 'accepted',
+            isOrganizer: true,
+            isOptional: false,
+            role: 'advisor' as
+              | 'advisor'
+              | 'client'
+              | 'prospect'
+              | 'colleague'
+              | 'compliance_officer',
+          }
+        : {
+            email: 'unknown@example.com',
+            name: 'Unknown Organizer',
+            responseStatus: 'accepted' as 'needsAction' | 'declined' | 'tentative' | 'accepted',
+            isOrganizer: true,
+            isOptional: false,
+            role: 'advisor' as
+              | 'advisor'
+              | 'client'
+              | 'prospect'
+              | 'colleague'
+              | 'compliance_officer',
+          };
+
+      const result: CalendarEvent = {
+        id: event.id,
+        title: event.summary ?? 'Untitled Meeting',
+        description: event.description ?? '',
+        startTime: parseGoogleDate(event.start),
+        endTime: parseGoogleDate(event.end),
+        timeZone: event.start?.timeZone ?? 'UTC',
+        location: event.location ?? '',
+        meetingUrl: extractMeetingUrl(event.description ?? ''),
+        provider: CalendarProvider.GOOGLE,
+        calendarId: event.organizer?.email ?? calendarId,
+        attendees:
+          event.attendees?.map((attendee: GoogleCalendarAttendee) => ({
+            email: attendee.email ?? '',
+            name: ((): string => {
+              const displayName = attendee.displayName;
+              if (displayName) {
+                return displayName;
+              }
+              const email = attendee.email;
+              if (email) {
+                return email.split('@')[0];
+              }
+              return 'Unknown';
+            })() as const,
+            responseStatus: attendee.responseStatus ?? 'needsAction',
+            isOrganizer: attendee.organizer ?? false,
+            isOptional: attendee.optional ?? false,
+            role: 'colleague' as
+              | 'advisor'
+              | 'client'
+              | 'prospect'
+              | 'colleague'
+              | 'compliance_officer', // Default role, should be determined by your system
+          })) ?? [],
+        organizer,
+        maxAttendees: event.maxParticipants ?? event.maxAttendees ?? undefined,
+        isRecurring: Boolean(event.recurringEventId),
+        recurrencePattern: event.recurrence
+          ? {
+              frequency: 'monthly', // Default, should be parsed from recurrence rule
+              interval: 1,
+              daysOfWeek: [], // Should be parsed from recurrence rule
+            }
+          : undefined,
+        status: event.status as 'confirmed' | 'tentative' | 'cancelled',
+        visibility: event.visibility as 'default' | 'public' | 'private',
+        botSettings: {
+          enableBot: true,
+          botJoinMinutesBefore: 5,
+          recordingEnabled: true,
+          transcriptionEnabled: true,
+          autoGenerateContent: true,
+        },
+        clientContext: {
+          isClientMeeting: false,
+          clientIds: [],
+          meetingType: 'consultation',
+          confidentialityLevel: 'standard',
+        },
+        createdAt: event.created ? new Date(event.created) : new Date(),
+        updatedAt: event.updated ? new Date(event.updated) : new Date(),
+      };
+      return result;
+    });
   } catch (error) {
     calendarLogger.error(
       'Error fetching Google Calendar events',
@@ -614,15 +607,7 @@ export async function validateGoogleCalendarAccess(accessToken: string): Promise
   }
 }
 
-interface GoogleCalendarItem {
-  id: string;
-  summary: string;
-  description?: string;
-  primary?: boolean;
-  accessRole?: 'freeBusyReader' | 'reader' | 'writer' | 'owner';
-  backgroundColor?: string;
-  foregroundColor?: string;
-}
+// GoogleCalendarItem interface moved to master-interfaces.ts
 
 /**
  * Gets user's calendar list
@@ -634,12 +619,9 @@ export async function getUserCalendars(accessToken: string) {
     const response = await calendar.calendarList.list();
 
     return (
-      response.data.items?.map((cal: GoogleCalendarItem) => {
-        if (!cal.id) {
-          throw new Error('Calendar ID is missing');
-        }
-        if (!cal.summary) {
-          throw new Error('Calendar summary is missing');
+      response.data.items?.map(cal => {
+        if (!isGoogleCalendarListEntry(cal)) {
+          throw new Error('Invalid calendar entry format');
         }
 
         return {

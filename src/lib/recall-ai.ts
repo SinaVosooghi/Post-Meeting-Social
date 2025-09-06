@@ -61,7 +61,8 @@ async function recallApiRequest<T>(endpoint: string, options: RequestInit = {}):
     throw new Error(`Recall.ai API error (${response.status}): ${error}`);
   }
 
-  return response.json() as Promise<T>;
+  const jsonResponse = (await response.json()) as RecallApiResponse<T>;
+  return jsonResponse.data;
 }
 
 // ============================================================================
@@ -88,25 +89,23 @@ export async function scheduleMeetingBot(
       ...config,
     };
 
-    const response = await recallApiRequest<RecallApiResponse<RecallBot>>('/bots', {
+    const response = await recallApiRequest<RecallBotApi>('/bots', {
       method: 'POST',
       body: JSON.stringify(botConfig),
     });
 
     return {
-      id: response.data.id,
+      id: response.id,
       meetingUrl,
-      status: response.data.status,
+      status: response.status,
       botName: botConfig.bot_name,
-      scheduledAt: new Date(response.data.created_at as string | number | Date),
-      startedAt: response.data.started_at
-        ? new Date(response.data.started_at as string | number | Date)
+      scheduledAt: new Date(response.created_at as string | number | Date),
+      startedAt: response.started_at
+        ? new Date(response.started_at as string | number | Date)
         : null,
-      endedAt: response.data.ended_at
-        ? new Date(response.data.ended_at as string | number | Date)
-        : null,
-      recordingUrl: (response.data.recording_url as string) || null,
-      transcriptUrl: (response.data.transcript_url as string) || null,
+      endedAt: response.ended_at ? new Date(response.ended_at as string | number | Date) : null,
+      recordingUrl: (response.recording_url as string) || null,
+      transcriptUrl: (response.transcript_url as string) || null,
       config: {
         recordAudio: botConfig.record_audio,
         recordVideo: botConfig.record_video,
@@ -140,35 +139,33 @@ export async function getBotStatus(botId: string): Promise<RecallBot> {
       return getMockBotStatus(botId);
     }
 
-    const response = await recallApiRequest<RecallApiResponse<RecallBotApi>>(`/bots/${botId}`);
+    const response = await recallApiRequest<RecallBotApi>(`/bots/${botId}`);
 
     return {
-      id: response.data.id,
-      meetingUrl: response.data.meeting_url,
-      status: response.data.status,
-      botName: response.data.bot_name || 'Meeting Bot',
-      scheduledAt: new Date(response.data.created_at as string | number | Date),
-      startedAt: response.data.started_at
-        ? new Date(response.data.started_at as string | number | Date)
+      id: response.id,
+      meetingUrl: response.meeting_url,
+      status: response.status,
+      botName: response.bot_name || 'Meeting Bot',
+      scheduledAt: new Date(response.created_at as string | number | Date),
+      startedAt: response.started_at
+        ? new Date(response.started_at as string | number | Date)
         : null,
-      endedAt: response.data.ended_at
-        ? new Date(response.data.ended_at as string | number | Date)
-        : null,
-      recordingUrl: (response.data.recording_url as string) || null,
-      transcriptUrl: (response.data.transcript_url as string) || null,
+      endedAt: response.ended_at ? new Date(response.ended_at as string | number | Date) : null,
+      recordingUrl: (response.recording_url as string) || null,
+      transcriptUrl: (response.transcript_url as string) || null,
       config: {
-        recordAudio: response.data.record_audio || true,
-        recordVideo: response.data.record_video || false,
-        recordScreen: response.data.record_screen || false,
+        recordAudio: response.record_audio || true,
+        recordVideo: response.record_video || false,
+        recordScreen: response.record_screen || false,
         transcriptionEnabled: true,
-        botName: response.data.bot_name || 'Meeting Bot',
-        webhookUrl: response.data.webhook_url || null,
+        botName: response.bot_name || 'Meeting Bot',
+        webhookUrl: response.webhook_url || null,
       },
       metadata: {
-        meetingPlatform: detectMeetingPlatform(response.data.meeting_url),
-        duration: response.data.duration || null,
-        participantCount: response.data.participant_count || null,
-        transcriptWordCount: response.data.transcript_word_count || null,
+        meetingPlatform: detectMeetingPlatform(response.meeting_url),
+        duration: response.duration || null,
+        participantCount: response.participant_count || null,
+        transcriptWordCount: response.transcript_word_count || null,
       },
     };
   } catch (error) {
@@ -232,11 +229,9 @@ export async function listMeetingBots(
       params.append('created_before', options.dateTo.toISOString());
     }
 
-    const response = await recallApiRequest<RecallApiResponse<RecallBotApi[]>>(
-      `/bots?${params.toString()}`
-    );
+    const response = await recallApiRequest<RecallBotApi[]>(`/bots?${params.toString()}`);
 
-    return response.data.map(bot => ({
+    return response.map(bot => ({
       id: bot.id,
       meetingUrl: bot.meeting_url,
       status: bot.status,
@@ -283,30 +278,28 @@ export async function getMeetingTranscript(botId: string): Promise<MeetingTransc
       return getMockTranscript(botId);
     }
 
-    const response = await recallApiRequest<RecallApiResponse<RecallTranscriptApi>>(
-      `/bots/${botId}/transcript`
-    );
+    const response = await recallApiRequest<RecallTranscriptApi>(`/bots/${botId}/transcript`);
 
     return {
       botId,
-      meetingId: response.data.meeting_id,
-      content: response.data.transcript,
-      speakers: response.data.speakers || [],
+      meetingId: response.meeting_id,
+      content: response.transcript,
+      speakers: response.speakers || [],
       segments:
-        response.data.segments?.map(segment => ({
+        response.segments?.map(segment => ({
           speaker: segment.speaker,
           text: segment.text,
           startTime: segment.start_time,
           endTime: segment.end_time,
           confidence: segment.confidence || 0.95,
         })) || [],
-      summary: response.data.summary || null,
-      keyPoints: response.data.key_points || [],
-      actionItems: response.data.action_items || [],
-      duration: response.data.duration || 0,
-      wordCount: response.data.word_count || 0,
-      language: response.data.language || 'en',
-      createdAt: new Date(response.data.created_at),
+      summary: response.summary || null,
+      keyPoints: response.key_points || [],
+      actionItems: response.action_items || [],
+      duration: response.duration || 0,
+      wordCount: response.word_count || 0,
+      language: response.language || 'en',
+      createdAt: new Date(response.created_at),
     };
   } catch (error) {
     recallLogger.error('Failed to get meeting transcript', error);

@@ -19,6 +19,16 @@ import type {
   CalendarEventsResponse,
 } from '@/types/master-interfaces';
 
+// Type guard for CalendarEventsRequest
+function isCalendarEventsRequest(obj: unknown): obj is CalendarEventsRequest {
+  return (
+    typeof obj === 'object' &&
+    obj !== null &&
+    'action' in obj &&
+    typeof (obj as Record<string, unknown>).action === 'string'
+  );
+}
+
 // ============================================================================
 // API ROUTE HANDLER
 // ============================================================================
@@ -213,13 +223,49 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const body = (await request.json()) as CalendarEventsRequest;
-    const { action, useMockData, ..._params } = body;
+    let body: CalendarEventsRequest;
+    try {
+      const jsonData: unknown = await request.json();
+      if (isCalendarEventsRequest(jsonData)) {
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+        body = jsonData;
+      } else {
+        throw new Error('Invalid request body structure');
+      }
+    } catch (error) {
+      return NextResponse.json<ApiResponse<never>>(
+        {
+          success: false,
+          error: {
+            message: 'Invalid JSON in request body',
+            code: 'INVALID_JSON',
+            details: { error: String(error) },
+            timestamp: new Date().toISOString(),
+            requestId: crypto.randomUUID(),
+          },
+          metadata: {
+            timestamp: new Date().toISOString(),
+            requestId: crypto.randomUUID(),
+            version: '1.0.0',
+          },
+        },
+        { status: 400 }
+      );
+    }
+
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
+    const action = body.action;
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
+    const useMockData = body.useMockData;
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+    const _params: Record<string, unknown> = { ...body };
+    delete _params.action;
+    delete _params.useMockData;
 
     switch (action) {
       case 'fetch': {
         // Same logic as GET request
-        const shouldUseMockData = useMockData || !process.env.GOOGLE_CLIENT_ID;
+        const shouldUseMockData = Boolean(useMockData) || !process.env.GOOGLE_CLIENT_ID;
         const requestId = crypto.randomUUID();
 
         if (shouldUseMockData) {

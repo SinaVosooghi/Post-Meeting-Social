@@ -5,19 +5,7 @@
  * Centralized logging with environment-aware behavior
  */
 
-type LogLevel = 'debug' | 'info' | 'warn' | 'error';
-
-interface LogContext {
-  [key: string]: unknown;
-}
-
-interface LogEntry {
-  level: LogLevel;
-  message: string;
-  timestamp: string;
-  context?: LogContext;
-  error?: Error;
-}
+import type { LogLevel, LogContext, LogEntry } from '@/types';
 
 /**
  * Formats log entry for output
