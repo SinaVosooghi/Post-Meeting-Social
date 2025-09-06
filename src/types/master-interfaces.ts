@@ -1296,6 +1296,88 @@ export enum NotificationType {
   ERROR_NOTIFICATION = 'error_notification',
 }
 
+// Risk and Compliance Enums
+export enum RiskLevel {
+  LOW = 'low',
+  MEDIUM = 'medium',
+  HIGH = 'high',
+  CRITICAL = 'critical',
+}
+
+export enum RiskTolerance {
+  LOW = 'low',
+  MEDIUM = 'medium',
+  HIGH = 'high',
+}
+
+export enum FirmType {
+  RIA = 'ria',
+  BROKER_DEALER = 'broker_dealer',
+  HYBRID = 'hybrid',
+  BANK = 'bank',
+}
+
+export enum ComplianceFramework {
+  FINRA = 'finra',
+  SEC = 'sec',
+  STATE = 'state',
+  MULTIPLE = 'multiple',
+}
+
+export enum RelationshipType {
+  PROSPECT = 'prospect',
+  CLIENT = 'client',
+  FORMER_CLIENT = 'former_client',
+}
+
+export enum RiskProfile {
+  CONSERVATIVE = 'conservative',
+  MODERATE = 'moderate',
+  AGGRESSIVE = 'aggressive',
+}
+
+export enum InvestmentExperience {
+  BEGINNER = 'beginner',
+  INTERMEDIATE = 'intermediate',
+  ADVANCED = 'advanced',
+}
+
+export enum RegulatoryStatus {
+  RETAIL = 'retail',
+  ACCREDITED = 'accredited',
+  INSTITUTIONAL = 'institutional',
+}
+
+export enum PrivacyLevel {
+  PUBLIC = 'public',
+  CONNECTIONS_ONLY = 'connections_only',
+  PRIVATE = 'private',
+}
+
+export enum ContactMethod {
+  EMAIL = 'email',
+  PHONE = 'phone',
+  TEXT = 'text',
+  PORTAL = 'portal',
+}
+
+export enum MeetingParticipantRole {
+  ADVISOR = 'advisor',
+  CLIENT = 'client',
+  PROSPECT = 'prospect',
+  COLLEAGUE = 'colleague',
+  COMPLIANCE_OFFICER = 'compliance_officer',
+  UNKNOWN = 'unknown',
+}
+
+export enum BotJoinStatus {
+  PENDING = 'pending',
+  JOINING = 'joining',
+  JOINED = 'joined',
+  FAILED = 'failed',
+  LEFT = 'left',
+}
+
 // ============================================================================
 // 8. UI COMPONENT TYPES
 // ============================================================================

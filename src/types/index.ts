@@ -15,36 +15,15 @@
  */
 
 // Re-export all interfaces from master-interfaces
-export * from './master-interfaces';
-
 // ============================================================================
-// BACKWARD COMPATIBILITY ALIASES
+// CENTRALIZED TYPE EXPORTS - ORGANIZED BY DOMAIN
 // ============================================================================
-// These aliases maintain compatibility during migration
-// They will be removed in a future version
+// This file serves as the single source of truth for all type exports.
+// All types are defined in master-interfaces.ts and re-exported here.
 
-// Re-export commonly used types for convenience
+// Foundation Types
 export type {
-  // Core domain types
-  FinancialAdvisor,
-  ClientMeeting,
-  RecallBot,
-  GeneratedContent,
-  SocialMediaPost,
-  ComplianceValidation,
-
-  // Enums
-  SocialPlatform,
-  BotStatus,
-  ContentTone,
-  ContentLength,
-  MeetingPlatform,
-  PublishingStatus,
-
-  // Utility types
-  Result,
-  Ok,
-  Err,
+  Branded,
   ID,
   AdvisorID,
   MeetingID,
@@ -53,9 +32,124 @@ export type {
   UserID,
   BotID,
   PostID,
-
-  // API types
-  ApiResponse,
-  ApiError,
-  ApiMetadata,
+  ISODate,
+  NonEmptyString,
+  Json,
+  Lazy,
+  DeepPartial,
+  NonNullable,
+  Optional,
+  Required,
+  Ok,
+  Err,
+  Result,
 } from './master-interfaces';
+
+// Financial Advisory Domain
+export type {
+  FinancialAdvisor,
+  ComplianceSettings,
+  RegulatoryRequirements,
+  FirmSettings,
+  SocialMediaSettings,
+} from './master-interfaces';
+
+// Meeting & Recording Domain
+export type {
+  ClientMeeting,
+  ClientRelationship,
+  CommunicationPreferences,
+  ComplianceFlags,
+  RecordingDetails,
+  TranscriptSpeaker,
+  TranscriptSegment,
+  TranscriptSummary,
+} from './master-interfaces';
+
+// Recall.ai Integration Domain
+export type {
+  RecallBot,
+  BotConfiguration,
+  BotError,
+  RecallBotApi,
+  RecallTranscriptApi,
+  ApiResponse,
+  RecallApiResponse,
+} from './master-interfaces';
+
+// Content Generation Domain
+export type {
+  GeneratedContent,
+  SocialMediaPost,
+  GeneratePostsRequest,
+  GeneratePostsResponse,
+  ContentGenerationResponse,
+  GeneratePostOptions,
+  GeneratedPostUtility,
+} from './master-interfaces';
+
+// Google Calendar Integration Domain
+export type {
+  GoogleCalendarConfig,
+  CalendarEvent,
+  CalendarAttendee,
+  GoogleCalendarItem,
+} from './master-interfaces';
+
+// UI Component Types
+export type {
+  BadgeProps,
+  ButtonProps,
+  TextareaProps,
+  MeetingPostCardProps,
+  ProvidersProps,
+} from './master-interfaces';
+
+// Utility & Library Types
+export type { LogLevel, LogContext, LogEntry } from './master-interfaces';
+
+// Enums
+export {
+  SocialPlatform,
+  ContentTone,
+  ContentLength,
+  ContentType,
+  MeetingPlatform,
+  MeetingPlatformType,
+  CalendarProvider,
+  BotStatus,
+  RecordingStatus,
+  TranscriptStatus,
+  PublishingStatus,
+  ComplianceStatus,
+  ValidationType,
+  ValidationStatus,
+  JobType,
+  JobPriority,
+  JobStatus,
+  HealthStatus,
+  NotificationType,
+  RiskTolerance,
+  FirmType,
+  ComplianceFramework,
+  RelationshipType,
+  RiskProfile,
+  InvestmentExperience,
+  RegulatoryStatus,
+  PrivacyLevel,
+  ContactMethod,
+  RiskLevel,
+  BotJoinStatus,
+} from './master-interfaces';
+
+// Type Guards
+export { isOk, isErr, isMeeting } from './master-interfaces';
+
+// ============================================================================
+// BACKWARD COMPATIBILITY ALIASES
+// ============================================================================
+// These aliases maintain compatibility during migration
+// They will be removed in a future version
+
+// Note: All types are already exported above in their respective domain sections
+// This section is kept for future backward compatibility needs

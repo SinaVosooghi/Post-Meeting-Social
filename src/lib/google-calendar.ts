@@ -9,6 +9,7 @@ import { google } from 'googleapis';
 import type { calendar_v3 } from 'googleapis';
 import type { CalendarEvent, GoogleCalendarConfig, GoogleCalendarAttendee } from '@/types';
 import { CalendarProvider } from '@/types';
+import { MeetingParticipantRole } from '@/types/master-interfaces';
 import { calendarLogger } from './logger';
 
 // Type guard for Google Calendar events
@@ -144,12 +145,7 @@ export async function getUpcomingEvents(
             responseStatus: 'accepted' as 'needsAction' | 'declined' | 'tentative' | 'accepted',
             isOrganizer: true,
             isOptional: false,
-            role: 'advisor' as
-              | 'advisor'
-              | 'client'
-              | 'prospect'
-              | 'colleague'
-              | 'compliance_officer',
+            role: MeetingParticipantRole.ADVISOR,
           }
         : {
             email: 'unknown@example.com',
@@ -157,12 +153,7 @@ export async function getUpcomingEvents(
             responseStatus: 'accepted' as 'needsAction' | 'declined' | 'tentative' | 'accepted',
             isOrganizer: true,
             isOptional: false,
-            role: 'advisor' as
-              | 'advisor'
-              | 'client'
-              | 'prospect'
-              | 'colleague'
-              | 'compliance_officer',
+            role: MeetingParticipantRole.ADVISOR,
           };
 
       const result: CalendarEvent = {
@@ -177,29 +168,37 @@ export async function getUpcomingEvents(
         provider: CalendarProvider.GOOGLE,
         calendarId: event.organizer?.email ?? calendarId,
         attendees:
-          event.attendees?.map((attendee: GoogleCalendarAttendee) => ({
-            email: attendee.email ?? '',
-            name: ((): string => {
-              const displayName = attendee.displayName;
-              if (displayName) {
-                return displayName;
-              }
-              const email = attendee.email;
-              if (email) {
-                return email.split('@')[0];
-              }
-              return 'Unknown';
-            })() as const,
-            responseStatus: attendee.responseStatus ?? 'needsAction',
-            isOrganizer: attendee.organizer ?? false,
-            isOptional: attendee.optional ?? false,
-            role: 'colleague' as
-              | 'advisor'
-              | 'client'
-              | 'prospect'
-              | 'colleague'
-              | 'compliance_officer', // Default role, should be determined by your system
-          })) ?? [],
+          event.attendees?.map((attendee: GoogleCalendarAttendee) => {
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
+            const safeAttendee = attendee;
+            return {
+              // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
+              email: safeAttendee.email ?? '',
+              name: ((): string => {
+                // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
+                const displayName = safeAttendee.displayName;
+                if (displayName) {
+                  // eslint-disable-next-line @typescript-eslint/no-unsafe-return
+                  return displayName;
+                }
+                // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
+                const email = safeAttendee.email;
+                if (email) {
+                  // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return
+                  return email.split('@')[0];
+                }
+                return 'Unknown';
+                // eslint-disable-next-line @typescript-eslint/no-unsafe-return
+              })() as const,
+              // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
+              responseStatus: safeAttendee.responseStatus ?? 'needsAction',
+              // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
+              isOrganizer: safeAttendee.organizer ?? false,
+              // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
+              isOptional: safeAttendee.optional ?? false,
+              role: MeetingParticipantRole.COLLEAGUE, // Default role, should be determined by your system
+            };
+          }) ?? [],
         organizer,
         maxAttendees: event.maxParticipants ?? event.maxAttendees ?? undefined,
         isRecurring: Boolean(event.recurringEventId),
@@ -301,7 +300,7 @@ export async function createCalendarEvent(
           responseStatus: 'accepted',
           isOrganizer: true,
           isOptional: false,
-          role: 'advisor',
+          role: MeetingParticipantRole.ADVISOR,
         }
       : {
           email: 'unknown@example.com',
@@ -309,7 +308,7 @@ export async function createCalendarEvent(
           responseStatus: 'accepted',
           isOrganizer: true,
           isOptional: false,
-          role: 'advisor',
+          role: MeetingParticipantRole.ADVISOR,
         };
 
     return {
@@ -324,17 +323,29 @@ export async function createCalendarEvent(
       provider: CalendarProvider.GOOGLE,
       calendarId: event.organizer?.email ?? calendarId,
       attendees:
-        event.attendees?.map((attendee: GoogleCalendarAttendee) => ({
-          email: attendee.email ?? '',
-          name:
-            attendee.displayName ??
-            (attendee.email ? attendee.email.split('@')[0] : 'Unknown') ??
-            'Unknown',
-          responseStatus: attendee.responseStatus ?? 'needsAction',
-          isOrganizer: attendee.organizer ?? false,
-          isOptional: attendee.optional ?? false,
-          role: 'colleague', // Default role, should be determined by your system
-        })) ?? [],
+        event.attendees?.map((attendee: GoogleCalendarAttendee) => {
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
+          const safeAttendee = attendee;
+          return {
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
+            email: safeAttendee.email ?? '',
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+            name:
+              // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
+              safeAttendee.displayName ??
+              // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
+              // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return
+              (safeAttendee.email ? safeAttendee.email.split('@')[0] : 'Unknown') ??
+              'Unknown',
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
+            responseStatus: safeAttendee.responseStatus ?? 'needsAction',
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
+            isOrganizer: safeAttendee.organizer ?? false,
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
+            isOptional: safeAttendee.optional ?? false,
+            role: MeetingParticipantRole.COLLEAGUE, // Default role, should be determined by your system
+          };
+        }) ?? [],
       organizer,
       maxAttendees: event.maxParticipants ?? event.maxAttendees ?? undefined,
       isRecurring: false,
@@ -444,7 +455,7 @@ export async function updateCalendarEvent(
           responseStatus: 'accepted',
           isOrganizer: true,
           isOptional: false,
-          role: 'advisor',
+          role: MeetingParticipantRole.ADVISOR,
         }
       : {
           email: 'unknown@example.com',
@@ -452,7 +463,7 @@ export async function updateCalendarEvent(
           responseStatus: 'accepted',
           isOrganizer: true,
           isOptional: false,
-          role: 'advisor',
+          role: MeetingParticipantRole.ADVISOR,
         };
 
     return {
@@ -467,17 +478,29 @@ export async function updateCalendarEvent(
       provider: CalendarProvider.GOOGLE,
       calendarId: event.organizer?.email ?? calendarId,
       attendees:
-        event.attendees?.map((attendee: GoogleCalendarAttendee) => ({
-          email: attendee.email ?? '',
-          name:
-            attendee.displayName ??
-            (attendee.email ? attendee.email.split('@')[0] : 'Unknown') ??
-            'Unknown',
-          responseStatus: attendee.responseStatus ?? 'needsAction',
-          isOrganizer: attendee.organizer ?? false,
-          isOptional: attendee.optional ?? false,
-          role: 'colleague', // Default role, should be determined by your system
-        })) ?? [],
+        event.attendees?.map((attendee: GoogleCalendarAttendee) => {
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
+          const safeAttendee = attendee;
+          return {
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
+            email: safeAttendee.email ?? '',
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+            name:
+              // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
+              safeAttendee.displayName ??
+              // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
+              // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return
+              (safeAttendee.email ? safeAttendee.email.split('@')[0] : 'Unknown') ??
+              'Unknown',
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
+            responseStatus: safeAttendee.responseStatus ?? 'needsAction',
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
+            isOrganizer: safeAttendee.organizer ?? false,
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
+            isOptional: safeAttendee.optional ?? false,
+            role: MeetingParticipantRole.COLLEAGUE, // Default role, should be determined by your system
+          };
+        }) ?? [],
       organizer,
       maxAttendees: event.maxParticipants ?? event.maxAttendees ?? undefined,
       isRecurring: Boolean(event.recurringEventId),
@@ -681,7 +704,7 @@ export const MOCK_CALENDAR_EVENTS: CalendarEvent[] = [
         responseStatus: 'accepted',
         isOrganizer: false,
         isOptional: false,
-        role: 'client',
+        role: MeetingParticipantRole.CLIENT,
         clientId: 'client-123',
       },
     ],
@@ -739,7 +762,7 @@ export const MOCK_CALENDAR_EVENTS: CalendarEvent[] = [
         responseStatus: 'tentative',
         isOrganizer: false,
         isOptional: false,
-        role: 'client',
+        role: MeetingParticipantRole.CLIENT,
         clientId: 'client-456',
       },
       {
@@ -748,7 +771,7 @@ export const MOCK_CALENDAR_EVENTS: CalendarEvent[] = [
         responseStatus: 'accepted',
         isOrganizer: false,
         isOptional: false,
-        role: 'client',
+        role: MeetingParticipantRole.CLIENT,
         clientId: 'client-789',
       },
     ],

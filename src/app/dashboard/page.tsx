@@ -11,7 +11,18 @@ import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 
 import type { ClientMeeting } from '@/types/master-interfaces';
-import { MeetingPlatform, RecordingStatus, TranscriptStatus } from '@/types/master-interfaces';
+import {
+  MeetingPlatform,
+  RecordingStatus,
+  TranscriptStatus,
+  RiskLevel,
+  RiskTolerance,
+  FirmType,
+  ComplianceFramework,
+  RelationshipType,
+  RiskProfile,
+  InvestmentExperience,
+} from '@/types/master-interfaces';
 
 // Mock meetings data (replace with real data fetch)
 const MOCK_MEETINGS: ClientMeeting[] = [
@@ -28,9 +39,9 @@ const MOCK_MEETINGS: ClientMeeting[] = [
 
     clientRelationship: {
       clientId: 'client-123',
-      relationshipType: 'client',
-      riskProfile: 'moderate',
-      investmentExperience: 'intermediate',
+      relationshipType: RelationshipType.CLIENT,
+      riskProfile: RiskProfile.MODERATE,
+      investmentExperience: InvestmentExperience.INTERMEDIATE,
       regulatoryStatus: 'retail',
       communicationPreferences: {
         allowSocialMedia: true,
@@ -46,7 +57,7 @@ const MOCK_MEETINGS: ClientMeeting[] = [
       requiresLegalReview: false,
       hasInvestmentAdvice: true,
       needsDisclaimer: true,
-      riskLevel: 'medium',
+      riskLevel: RiskLevel.MEDIUM,
       topicsDiscussed: ['portfolio review', 'market outlook', 'investment strategy'],
     },
 
@@ -75,7 +86,7 @@ const MOCK_MEETINGS: ClientMeeting[] = [
         crd: '123456',
       },
       complianceSettings: {
-        riskToleranceThreshold: 'medium',
+        riskToleranceThreshold: RiskTolerance.MEDIUM,
         requiredDisclosures: ['investment disclaimer'],
         approvedHashtags: ['WealthManagement', 'FinancialPlanning'],
         restrictedTopics: ['specific stocks', 'guarantees'],
@@ -92,10 +103,10 @@ const MOCK_MEETINGS: ClientMeeting[] = [
         lastComplianceReview: new Date(),
       },
       firmSettings: {
-        firmType: 'ria',
+        firmType: FirmType.RIA,
         aum: 500000000,
         clientCount: 200,
-        complianceFramework: 'multiple',
+        complianceFramework: ComplianceFramework.MULTIPLE,
       },
       createdAt: new Date(),
       updatedAt: new Date(),
@@ -114,9 +125,9 @@ const MOCK_MEETINGS: ClientMeeting[] = [
 
     clientRelationship: {
       clientId: 'client-456',
-      relationshipType: 'client',
-      riskProfile: 'conservative',
-      investmentExperience: 'beginner',
+      relationshipType: RelationshipType.CLIENT,
+      riskProfile: RiskProfile.CONSERVATIVE,
+      investmentExperience: InvestmentExperience.BEGINNER,
       regulatoryStatus: 'retail',
       communicationPreferences: {
         allowSocialMedia: true,
@@ -132,7 +143,7 @@ const MOCK_MEETINGS: ClientMeeting[] = [
       requiresLegalReview: false,
       hasInvestmentAdvice: true,
       needsDisclaimer: true,
-      riskLevel: 'low',
+      riskLevel: RiskLevel.LOW,
       topicsDiscussed: ['retirement planning', '401k', 'tax strategy'],
     },
 
@@ -161,7 +172,7 @@ const MOCK_MEETINGS: ClientMeeting[] = [
         crd: '123456',
       },
       complianceSettings: {
-        riskToleranceThreshold: 'medium',
+        riskToleranceThreshold: RiskTolerance.MEDIUM,
         requiredDisclosures: ['investment disclaimer'],
         approvedHashtags: ['WealthManagement', 'FinancialPlanning'],
         restrictedTopics: ['specific stocks', 'guarantees'],
@@ -178,10 +189,10 @@ const MOCK_MEETINGS: ClientMeeting[] = [
         lastComplianceReview: new Date(),
       },
       firmSettings: {
-        firmType: 'ria',
+        firmType: FirmType.RIA,
         aum: 500000000,
         clientCount: 200,
-        complianceFramework: 'multiple',
+        complianceFramework: ComplianceFramework.MULTIPLE,
       },
       createdAt: new Date(),
       updatedAt: new Date(),
