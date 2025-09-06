@@ -1787,3 +1787,21 @@ export interface ComplianceCheck {
   readonly passed: boolean;
   readonly details?: string;
 }
+
+/**
+ * Simplified compliance validation for basic use cases
+ * Maps to: Basic compliance validation workflow
+ * Note: Use the comprehensive ComplianceValidation interface for production
+ */
+export interface SimpleComplianceValidation {
+  readonly id: string;
+  readonly contentId: string;
+  readonly advisorId: string;
+  readonly validationType: 'auto' | 'manual';
+  readonly status: 'passed' | 'failed' | 'requires_review';
+  readonly checks: ComplianceCheck[];
+  readonly modifications: string[];
+  readonly approvedBy?: string;
+  readonly approvedAt?: Date;
+  readonly auditTrail: AuditEntry[];
+}
