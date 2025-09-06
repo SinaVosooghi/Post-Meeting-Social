@@ -128,7 +128,7 @@ export function Navigation() {
                     <button
                       onClick={() => {
                         setIsMenuOpen(false);
-                        handleSignOut();
+                        void handleSignOut();
                       }}
                       className="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50"
                     >
@@ -139,7 +139,9 @@ export function Navigation() {
               </div>
             ) : (
               <button
-                onClick={() => signIn('google')}
+                onClick={() => {
+                  void signIn('google');
+                }}
                 className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
               >
                 🚀 Sign In

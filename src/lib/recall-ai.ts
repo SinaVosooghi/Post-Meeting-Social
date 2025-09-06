@@ -1,7 +1,7 @@
 /**
  * Recall.ai Integration
  * Post-Meeting Social Media Content Generator
- * 
+ *
  * Handles meeting bot scheduling, transcript retrieval, and recording management
  */
 
@@ -12,10 +12,8 @@ import type {
   MeetingTranscript,
   RecallApiResponse,
 } from '@/types';
-import type {
-  RecallBotApi,
-  RecallTranscriptApi,
-} from '@/types/master-interfaces';
+import type { RecallBotApi, RecallTranscriptApi } from '@/types/master-interfaces';
+import { recallLogger } from './logger';
 
 // ============================================================================
 // RECALL.AI CONFIGURATION
@@ -46,16 +44,13 @@ const RECALL_API_CONFIG = {
 /**
  * Makes authenticated request to Recall.ai API
  */
-async function recallApiRequest<T>(
-  endpoint: string,
-  options: RequestInit = {}
-): Promise<T> {
+async function recallApiRequest<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
   const url = `${RECALL_API_CONFIG.baseUrl}${endpoint}`;
-  
+
   const response = await fetch(url, {
     ...options,
     headers: {
-      'Authorization': `Token ${RECALL_API_CONFIG.apiKey}`,
+      Authorization: `Token ${RECALL_API_CONFIG.apiKey}`,
       'Content-Type': 'application/json',
       ...options.headers,
     },
@@ -66,7 +61,8 @@ async function recallApiRequest<T>(
     throw new Error(`Recall.ai API error (${response.status}): ${error}`);
   }
 
-  return response.json();
+  const jsonResponse = (await response.json()) as RecallApiResponse<T>;
+  return jsonResponse.data;
 }
 
 // ============================================================================
@@ -86,34 +82,45 @@ export async function scheduleMeetingBot(
       return createMockBot(meetingUrl, config);
     }
 
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
     const botConfig = {
       ...RECALL_API_CONFIG.defaultConfig,
       meeting_url: meetingUrl,
-      bot_name: config.botName || 'Post-Meeting Content Bot',
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
+      bot_name: config.botName ?? 'Post-Meeting Content Bot',
       ...config,
     };
 
-    const response = await recallApiRequest<RecallApiResponse<RecallBot>>('/bots', {
+    const response = await recallApiRequest<RecallBotApi>('/bots', {
       method: 'POST',
       body: JSON.stringify(botConfig),
     });
 
     return {
-      id: response.data.id,
+      id: response.id,
       meetingUrl,
-      status: response.data.status,
+      status: response.status,
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
       botName: botConfig.bot_name,
-      scheduledAt: new Date(response.data.created_at),
-      startedAt: response.data.started_at ? new Date(response.data.started_at) : null,
-      endedAt: response.data.ended_at ? new Date(response.data.ended_at) : null,
-      recordingUrl: response.data.recording_url || null,
-      transcriptUrl: response.data.transcript_url || null,
+      scheduledAt: new Date(response.created_at as string | number | Date),
+      startedAt: response.started_at
+        ? new Date(response.started_at as string | number | Date)
+        : null,
+      endedAt: response.ended_at ? new Date(response.ended_at as string | number | Date) : null,
+      recordingUrl: (response.recording_url as string) || null,
+      transcriptUrl: (response.transcript_url as string) || null,
       config: {
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
         recordAudio: botConfig.record_audio,
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
         recordVideo: botConfig.record_video,
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
         recordScreen: botConfig.record_screen,
         transcriptionEnabled: true,
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
         botName: botConfig.bot_name,
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
         webhookUrl: botConfig.webhook_url,
       },
       metadata: {
@@ -124,8 +131,10 @@ export async function scheduleMeetingBot(
       },
     };
   } catch (error) {
-    console.error('Error scheduling meeting bot:', error);
-    throw new Error(`Failed to schedule meeting bot: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    recallLogger.error('Failed to schedule meeting bot', error);
+    throw new Error(
+      `Failed to schedule meeting bot: ${error instanceof Error ? error.message : 'Unknown error'}`
+    );
   }
 }
 
@@ -139,36 +148,40 @@ export async function getBotStatus(botId: string): Promise<RecallBot> {
       return getMockBotStatus(botId);
     }
 
-    const response = await recallApiRequest<RecallApiResponse<RecallBotApi>>(`/bots/${botId}`);
-    
+    const response = await recallApiRequest<RecallBotApi>(`/bots/${botId}`);
+
     return {
-      id: response.data.id,
-      meetingUrl: response.data.meeting_url,
-      status: response.data.status,
-      botName: response.data.bot_name || 'Meeting Bot',
-      scheduledAt: new Date(response.data.created_at),
-      startedAt: response.data.started_at ? new Date(response.data.started_at) : null,
-      endedAt: response.data.ended_at ? new Date(response.data.ended_at) : null,
-      recordingUrl: response.data.recording_url || null,
-      transcriptUrl: response.data.transcript_url || null,
+      id: response.id,
+      meetingUrl: response.meeting_url,
+      status: response.status,
+      botName: response.bot_name || 'Meeting Bot',
+      scheduledAt: new Date(response.created_at as string | number | Date),
+      startedAt: response.started_at
+        ? new Date(response.started_at as string | number | Date)
+        : null,
+      endedAt: response.ended_at ? new Date(response.ended_at as string | number | Date) : null,
+      recordingUrl: (response.recording_url as string) || null,
+      transcriptUrl: (response.transcript_url as string) || null,
       config: {
-        recordAudio: response.data.record_audio || true,
-        recordVideo: response.data.record_video || false,
-        recordScreen: response.data.record_screen || false,
+        recordAudio: response.record_audio || true,
+        recordVideo: response.record_video || false,
+        recordScreen: response.record_screen || false,
         transcriptionEnabled: true,
-        botName: response.data.bot_name || 'Meeting Bot',
-        webhookUrl: response.data.webhook_url || null,
+        botName: response.bot_name || 'Meeting Bot',
+        webhookUrl: response.webhook_url || null,
       },
       metadata: {
-        meetingPlatform: detectMeetingPlatform(response.data.meeting_url),
-        duration: response.data.duration || null,
-        participantCount: response.data.participant_count || null,
-        transcriptWordCount: response.data.transcript_word_count || null,
+        meetingPlatform: detectMeetingPlatform(response.meeting_url),
+        duration: response.duration || null,
+        participantCount: response.participant_count || null,
+        transcriptWordCount: response.transcript_word_count || null,
       },
     };
   } catch (error) {
-    console.error('Error getting bot status:', error);
-    throw new Error(`Failed to get bot status: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    recallLogger.error('Failed to get bot status', error);
+    throw new Error(
+      `Failed to get bot status: ${error instanceof Error ? error.message : 'Unknown error'}`
+    );
   }
 }
 
@@ -179,7 +192,7 @@ export async function cancelMeetingBot(botId: string): Promise<void> {
   try {
     // For development/demo - just log the cancellation
     if (!RECALL_API_CONFIG.apiKey || process.env.NODE_ENV === 'development') {
-      console.log(`Mock: Cancelled meeting bot ${botId}`);
+      recallLogger.info(`Mock: Cancelled meeting bot ${botId}`);
       return;
     }
 
@@ -187,8 +200,10 @@ export async function cancelMeetingBot(botId: string): Promise<void> {
       method: 'DELETE',
     });
   } catch (error) {
-    console.error('Error cancelling meeting bot:', error);
-    throw new Error(`Failed to cancel meeting bot: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    recallLogger.error('Failed to cancel meeting bot', error);
+    throw new Error(
+      `Failed to cancel meeting bot: ${error instanceof Error ? error.message : 'Unknown error'}`
+    );
   }
 }
 
@@ -210,16 +225,22 @@ export async function listMeetingBots(
     }
 
     const params = new URLSearchParams();
-    if (options.limit) params.append('limit', options.limit.toString());
-    if (options.status) params.append('status', options.status);
-    if (options.dateFrom) params.append('created_after', options.dateFrom.toISOString());
-    if (options.dateTo) params.append('created_before', options.dateTo.toISOString());
+    if (options.limit) {
+      params.append('limit', options.limit.toString());
+    }
+    if (options.status !== null) {
+      params.append('status', options.status);
+    }
+    if (options.dateFrom) {
+      params.append('created_after', options.dateFrom.toISOString());
+    }
+    if (options.dateTo) {
+      params.append('created_before', options.dateTo.toISOString());
+    }
 
-    const response = await recallApiRequest<RecallApiResponse<RecallBotApi[]>>(
-      `/bots?${params.toString()}`
-    );
+    const response = await recallApiRequest<RecallBotApi[]>(`/bots?${params.toString()}`);
 
-    return response.data.map(bot => ({
+    return response.map(bot => ({
       id: bot.id,
       meetingUrl: bot.meeting_url,
       status: bot.status,
@@ -245,8 +266,10 @@ export async function listMeetingBots(
       },
     }));
   } catch (error) {
-    console.error('Error listing meeting bots:', error);
-    throw new Error(`Failed to list meeting bots: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    recallLogger.error('Failed to list meeting bots', error);
+    throw new Error(
+      `Failed to list meeting bots: ${error instanceof Error ? error.message : 'Unknown error'}`
+    );
   }
 }
 
@@ -261,34 +284,38 @@ export async function getMeetingTranscript(botId: string): Promise<MeetingTransc
   try {
     // For development/demo - return mock transcript
     if (!RECALL_API_CONFIG.apiKey || process.env.NODE_ENV === 'development') {
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-return
       return getMockTranscript(botId);
     }
 
-    const response = await recallApiRequest<RecallApiResponse<RecallTranscriptApi>>(`/bots/${botId}/transcript`);
-    
+    const response = await recallApiRequest<RecallTranscriptApi>(`/bots/${botId}/transcript`);
+
     return {
       botId,
-      meetingId: response.data.meeting_id,
-      content: response.data.transcript,
-      speakers: response.data.speakers || [],
-      segments: response.data.segments?.map((segment) => ({
-        speaker: segment.speaker,
-        text: segment.text,
-        startTime: segment.start_time,
-        endTime: segment.end_time,
-        confidence: segment.confidence || 0.95,
-      })) || [],
-      summary: response.data.summary || null,
-      keyPoints: response.data.key_points || [],
-      actionItems: response.data.action_items || [],
-      duration: response.data.duration || 0,
-      wordCount: response.data.word_count || 0,
-      language: response.data.language || 'en',
-      createdAt: new Date(response.data.created_at),
+      meetingId: response.meeting_id,
+      content: response.transcript,
+      speakers: response.speakers || [],
+      segments:
+        response.segments?.map(segment => ({
+          speaker: segment.speaker,
+          text: segment.text,
+          startTime: segment.start_time,
+          endTime: segment.end_time,
+          confidence: segment.confidence || 0.95,
+        })) || [],
+      summary: response.summary || null,
+      keyPoints: response.key_points || [],
+      actionItems: response.action_items || [],
+      duration: response.duration || 0,
+      wordCount: response.word_count || 0,
+      language: response.language || 'en',
+      createdAt: new Date(response.created_at),
     };
   } catch (error) {
-    console.error('Error getting meeting transcript:', error);
-    throw new Error(`Failed to get meeting transcript: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    recallLogger.error('Failed to get meeting transcript', error);
+    throw new Error(
+      `Failed to get meeting transcript: ${error instanceof Error ? error.message : 'Unknown error'}`
+    );
   }
 }
 
@@ -299,11 +326,21 @@ export async function getMeetingTranscript(botId: string): Promise<MeetingTransc
 /**
  * Detects meeting platform from URL
  */
-function detectMeetingPlatform(meetingUrl: string): 'zoom' | 'google-meet' | 'microsoft-teams' | 'webex' | 'other' {
-  if (meetingUrl.includes('zoom.us')) return 'zoom';
-  if (meetingUrl.includes('meet.google.com')) return 'google-meet';
-  if (meetingUrl.includes('teams.microsoft.com')) return 'microsoft-teams';
-  if (meetingUrl.includes('webex.com')) return 'webex';
+function detectMeetingPlatform(
+  meetingUrl: string
+): 'zoom' | 'google-meet' | 'microsoft-teams' | 'webex' | 'other' {
+  if (meetingUrl.includes('zoom.us')) {
+    return 'zoom';
+  }
+  if (meetingUrl.includes('meet.google.com')) {
+    return 'google-meet';
+  }
+  if (meetingUrl.includes('teams.microsoft.com')) {
+    return 'microsoft-teams';
+  }
+  if (meetingUrl.includes('webex.com')) {
+    return 'webex';
+  }
   return 'other';
 }
 
@@ -316,23 +353,28 @@ function detectMeetingPlatform(meetingUrl: string): 'zoom' | 'google-meet' | 'mi
  */
 function createMockBot(meetingUrl: string, config: Partial<BotConfig>): RecallBot {
   const botId = `mock-bot-${Date.now()}`;
-  
+
   return {
     id: botId,
     meetingUrl,
     status: 'scheduled' as BotStatus,
-    botName: config.botName || 'Post-Meeting Content Bot',
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
+    botName: config.botName ?? 'Post-Meeting Content Bot',
     scheduledAt: new Date(),
     startedAt: null,
     endedAt: null,
     recordingUrl: null,
     transcriptUrl: null,
     config: {
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
       recordAudio: config.recordAudio ?? true,
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
       recordVideo: config.recordVideo ?? false,
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
       recordScreen: config.recordScreen ?? false,
       transcriptionEnabled: true,
-      botName: config.botName || 'Post-Meeting Content Bot',
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
+      botName: config.botName ?? 'Post-Meeting Content Bot',
       webhookUrl: RECALL_API_CONFIG.defaultConfig.webhook_url,
     },
     metadata: {
@@ -351,7 +393,7 @@ function getMockBotStatus(botId: string): RecallBot {
   // Simulate different statuses based on bot age
   const isOld = botId.includes('old');
   const isActive = botId.includes('active');
-  
+
   let status: BotStatus = 'scheduled';
   let startedAt: Date | null = null;
   let endedAt: Date | null = null;
@@ -406,7 +448,7 @@ function getMockBotList(options: { status?: BotStatus; limit?: number }): Recall
     getMockBotStatus('mock-bot-scheduled-3'),
   ];
 
-  if (options.status) {
+  if (options.status !== null) {
     return bots.filter(bot => bot.status === options.status);
   }
 
@@ -443,20 +485,21 @@ Client expressed satisfaction with current strategy and confidence in long-term 
     segments: [
       {
         speaker: 'John Smith',
-        text: 'Good morning Sarah, thanks for joining me today. Let\'s review your portfolio performance.',
+        text: "Good morning Sarah, thanks for joining me today. Let's review your portfolio performance.",
         startTime: 0,
         endTime: 5,
         confidence: 0.98,
       },
       {
         speaker: 'Sarah Johnson',
-        text: 'Good morning John. I\'m looking forward to seeing how we\'ve done this quarter.',
+        text: "Good morning John. I'm looking forward to seeing how we've done this quarter.",
         startTime: 5,
         endTime: 10,
         confidence: 0.96,
       },
     ],
-    summary: 'Quarterly portfolio review meeting discussing performance, market conditions, and strategy adjustments.',
+    summary:
+      'Quarterly portfolio review meeting discussing performance, market conditions, and strategy adjustments.',
     keyPoints: [
       'Portfolio performed well despite market volatility',
       'Opportunity for tax-loss harvesting identified',

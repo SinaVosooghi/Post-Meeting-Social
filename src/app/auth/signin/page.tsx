@@ -7,21 +7,48 @@
 
 'use client';
 
-import { signIn } from 'next-auth/react';
-import { useState } from 'react';
+import { signIn, useSession } from 'next-auth/react';
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 
 export default function SignInPage() {
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const { status } = useSession();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (status === 'authenticated') {
+      router.replace('/dashboard');
+    }
+  }, [status, router]);
 
   const handleGoogleSignIn = async () => {
     setIsLoading(true);
+    setError(null);
     try {
       await signIn('google', {
-        callbackUrl: '/',
+        callbackUrl: '/dashboard',
         redirect: true,
       });
     } catch (error) {
       console.error('Sign in error:', error);
+      setError('Authentication failed. Please try again.');
+      setIsLoading(false);
+    }
+  };
+
+  const handleLinkedInSignIn = async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      await signIn('linkedin', {
+        callbackUrl: '/dashboard',
+        redirect: true,
+      });
+    } catch (error) {
+      console.error('LinkedIn sign in error:', error);
+      setError('Authentication failed. Please try again.');
       setIsLoading(false);
     }
   };
@@ -40,8 +67,16 @@ export default function SignInPage() {
             <h2 className="text-2xl font-semibold text-gray-800 mb-6">Sign in to get started</h2>
 
             <div className="space-y-4">
+              {error && (
+                <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg text-sm">
+                  {error}
+                </div>
+              )}
+
               <button
-                onClick={handleGoogleSignIn}
+                onClick={() => {
+                  void handleGoogleSignIn();
+                }}
                 disabled={isLoading}
                 className="w-full flex items-center justify-center px-4 py-3 border border-gray-300 rounded-lg shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
@@ -74,6 +109,28 @@ export default function SignInPage() {
                   </>
                 )}
               </button>
+
+              <button
+                onClick={() => {
+                  void handleLinkedInSignIn();
+                }}
+                disabled={isLoading}
+                className="w-full flex items-center justify-center px-4 py-3 border border-gray-300 rounded-lg shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#0A66C2] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                {isLoading ? (
+                  <>
+                    <span className="inline-block animate-spin mr-2">⏳</span>
+                    Signing in...
+                  </>
+                ) : (
+                  <>
+                    <svg className="w-5 h-5 mr-3" viewBox="0 0 24 24" fill="#0A66C2">
+                      <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z" />
+                    </svg>
+                    Sign in with LinkedIn
+                  </>
+                )}
+              </button>
             </div>
 
             <div className="mt-8 pt-6 border-t border-gray-200">
@@ -85,6 +142,8 @@ export default function SignInPage() {
                   <li>📅 Google Calendar access for meeting synchronization</li>
                   <li>👤 Basic profile information for personalization</li>
                   <li>📧 Email address for account management</li>
+                  <li>🔗 LinkedIn profile for social media posting</li>
+                  <li>📝 Permission to post on your LinkedIn profile</li>
                 </ul>
               </div>
             </div>
