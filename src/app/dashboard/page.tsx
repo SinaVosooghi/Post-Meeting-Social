@@ -1,18 +1,17 @@
+'use client';
+
 /**
  * Dashboard Page
  * Shows meetings and allows posting to LinkedIn
  */
 
-import { auth } from '@/lib/auth';
+import { useSession, signOut } from 'next-auth/react';
 import { MeetingPostCard } from '@/components/MeetingPostCard';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
+import { Button } from '@/components/ui/button';
 
-import {
-  ClientMeeting,
-  MeetingPlatform,
-  RecordingStatus,
-  TranscriptStatus,
-} from '@/types/master-interfaces';
+import type { ClientMeeting } from '@/types/master-interfaces';
+import { MeetingPlatform, RecordingStatus, TranscriptStatus } from '@/types/master-interfaces';
 
 // Mock meetings data (replace with real data fetch)
 const MOCK_MEETINGS: ClientMeeting[] = [
@@ -190,41 +189,49 @@ const MOCK_MEETINGS: ClientMeeting[] = [
   },
 ];
 
-async function DashboardContent() {
-  const session = await auth();
+export default function DashboardPage() {
+  const { data: session, status } = useSession();
+
+  if (status === 'loading') {
+    return (
+      <div className="flex justify-center items-center min-h-screen">
+        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-gray-900"></div>
+      </div>
+    );
+  }
+
   if (!session?.user) {
     return (
-      <Alert variant="destructive">
-        <AlertTitle>Authentication Required</AlertTitle>
-        <AlertDescription>Please sign in to access the dashboard.</AlertDescription>
-      </Alert>
+      <div className="flex justify-center items-center min-h-screen">
+        <Alert variant="destructive">
+          <AlertTitle>Authentication Required</AlertTitle>
+          <AlertDescription>Please sign in to access the dashboard.</AlertDescription>
+        </Alert>
+      </div>
     );
   }
 
   return (
-    <div className="container mx-auto py-8">
-      <h1 className="text-3xl font-bold mb-8">Recent Meetings</h1>
-
-      <div className="space-y-6">
-        {MOCK_MEETINGS.map(meeting => (
-          <MeetingPostCard
-            key={meeting.id}
-            meeting={meeting}
-            onPublish={async post => {
-              console.log('Published post:', post);
-              // Add real post handling here
-            }}
-          />
-        ))}
-      </div>
-    </div>
-  );
-}
-
-export default function DashboardPage() {
-  return (
     <div className="flex justify-center items-center min-h-screen">
-      <DashboardContent />
+      <div className="container mx-auto py-8">
+        <div className="flex justify-between items-center mb-8">
+          <h1 className="text-3xl font-bold">Recent Meetings</h1>
+          <Button
+            variant="outline"
+            onClick={() => {
+              void signOut({ callbackUrl: '/auth/signin' });
+            }}
+          >
+            Sign Out
+          </Button>
+        </div>
+
+        <div className="space-y-6">
+          {MOCK_MEETINGS.map(meeting => (
+            <MeetingPostCard key={meeting.id} meeting={meeting} />
+          ))}
+        </div>
+      </div>
     </div>
   );
 }

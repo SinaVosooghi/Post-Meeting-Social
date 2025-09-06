@@ -31,7 +31,7 @@ const TestComponent: React.FC = () => {
 describe('Authentication Flow Integration', () => {
   it('should render test component without errors', () => {
     render(<TestComponent />);
-    
+
     expect(screen.getByText('Post-Meeting Social')).toBeInTheDocument();
     expect(screen.getByText('Authentication Integration Test')).toBeInTheDocument();
   });

@@ -17,20 +17,47 @@ jest.mock('next-auth/react', () => ({
   useSession: jest.fn(),
   signIn: () => mockSignIn(),
   signOut: () => mockSignOut(),
-  SessionProvider: ({ children }: { children: React.ReactNode }) => children,
+  SessionProvider: ({ children }: { children: React.ReactNode }) => children, // eslint-disable-line @typescript-eslint/naming-convention
 }));
 
 import { useSession } from 'next-auth/react';
 
 // Mock Next.js Image component
 jest.mock('next/image', () => {
-  return function MockImage({ src, alt, ...props }: { src: string; alt: string; [key: string]: unknown }) {
-    // eslint-disable-next-line @next/next/no-img-element
-    return <img src={src} alt={alt} {...props} />;
+  return function MockImage({
+    src,
+    alt,
+    width = 24,
+    height = 24,
+    ...props
+  }: {
+    src: string;
+    alt: string;
+    width?: number;
+    height?: number;
+    [key: string]: unknown;
+  }) {
+    return (
+      <div
+        data-testid="mock-image"
+        style={{
+          width: typeof width === 'number' ? `${width}px` : width,
+          height: typeof height === 'number' ? `${height}px` : height,
+        }}
+        {...props}
+      >
+        <div data-testid="mock-image-src" data-src={src} />
+        <div data-testid="mock-image-alt" data-alt={alt} />
+      </div>
+    );
   };
 });
 
-const renderWithSession = (session: { user?: { id?: string; name?: string; email?: string; image?: string | null } } | null = null) => {
+const renderWithSession = (
+  session: {
+    user?: { id?: string; name?: string; email?: string; image?: string | null };
+  } | null = null
+) => {
   return render(
     <SessionProvider session={session}>
       <Navigation />
@@ -53,23 +80,23 @@ describe('Navigation Component', () => {
 
     it('should render sign in button when not authenticated', () => {
       renderWithSession();
-      
+
       expect(screen.getByText('🚀 Sign In')).toBeInTheDocument();
       expect(screen.getByText('Post-Meeting Social')).toBeInTheDocument();
     });
 
     it('should call signIn when sign in button is clicked', () => {
       renderWithSession();
-      
+
       const signInButton = screen.getByText('🚀 Sign In');
       fireEvent.click(signInButton);
-      
+
       expect(mockSignIn).toHaveBeenCalled(); // Updated for NextAuth v5
     });
 
     it('should not show navigation links when not authenticated', () => {
       renderWithSession();
-      
+
       expect(screen.queryByText('📊 Dashboard')).not.toBeInTheDocument();
       expect(screen.queryByText('📅 Meetings')).not.toBeInTheDocument();
       expect(screen.queryByText('⚙️ Automations')).not.toBeInTheDocument();
@@ -96,14 +123,14 @@ describe('Navigation Component', () => {
 
     it('should render user menu when authenticated', () => {
       renderWithSession(mockSession);
-      
+
       expect(screen.getByText('John Doe')).toBeInTheDocument();
       expect(screen.getByText('Post-Meeting Social')).toBeInTheDocument();
     });
 
     it('should show navigation links when authenticated', () => {
       renderWithSession(mockSession);
-      
+
       expect(screen.getAllByText('📊 Dashboard')[0]).toBeInTheDocument();
       expect(screen.getAllByText('📅 Meetings')[0]).toBeInTheDocument();
       expect(screen.getAllByText('⚙️ Automations')[0]).toBeInTheDocument();
@@ -112,10 +139,14 @@ describe('Navigation Component', () => {
 
     it('should toggle user menu dropdown when clicked', async () => {
       renderWithSession(mockSession);
-      
+
       const userButton = screen.getByText('John Doe').closest('button');
-      fireEvent.click(userButton!);
-      
+      if (userButton) {
+        fireEvent.click(userButton);
+      } else {
+        throw new Error('User button not found');
+      }
+
       await waitFor(() => {
         expect(screen.getByText('👤 Profile')).toBeInTheDocument();
         expect(screen.getByText('⚙️ Settings')).toBeInTheDocument();
@@ -125,24 +156,32 @@ describe('Navigation Component', () => {
 
     it('should call signOut when sign out button is clicked', async () => {
       renderWithSession(mockSession);
-      
+
       const userButton = screen.getByText('John Doe').closest('button');
-      fireEvent.click(userButton!);
-      
+      if (userButton) {
+        fireEvent.click(userButton);
+      } else {
+        throw new Error('User button not found');
+      }
+
       await waitFor(() => {
         const signOutButton = screen.getByText('🚪 Sign Out');
         fireEvent.click(signOutButton);
       });
-      
+
       expect(mockSignOut).toHaveBeenCalled(); // Updated for NextAuth v5
     });
 
     it('should show user avatar when image is available', () => {
       renderWithSession(mockSession);
-      
-      const avatar = screen.getByAltText('John Doe');
+
+      const avatar = screen.getByTestId('mock-image');
+      const avatarSrc = screen.getByTestId('mock-image-src');
+      const avatarAlt = screen.getByTestId('mock-image-alt');
+
       expect(avatar).toBeInTheDocument();
-      expect(avatar).toHaveAttribute('src', 'https://example.com/avatar.jpg');
+      expect(avatarSrc).toHaveAttribute('data-src', 'https://example.com/avatar.jpg');
+      expect(avatarAlt).toHaveAttribute('data-alt', 'John Doe');
     });
 
     it('should show initials when no image is available', () => {
@@ -160,7 +199,7 @@ describe('Navigation Component', () => {
       });
 
       renderWithSession(sessionWithoutImage);
-      
+
       expect(screen.getByText('J')).toBeInTheDocument();
     });
   });
@@ -175,7 +214,7 @@ describe('Navigation Component', () => {
 
     it('should show loading state when session is loading', () => {
       renderWithSession();
-      
+
       expect(screen.getByText('Post-Meeting Social')).toBeInTheDocument(); // Loading state still shows navigation
     });
   });
@@ -198,7 +237,7 @@ describe('Navigation Component', () => {
 
     it('should show mobile navigation links', () => {
       renderWithSession(mockSession);
-      
+
       // Mobile menu should be visible (hidden on desktop)
       expect(screen.getAllByText('📊 Dashboard')[0]).toBeInTheDocument();
       expect(screen.getAllByText('📅 Meetings')[0]).toBeInTheDocument();
