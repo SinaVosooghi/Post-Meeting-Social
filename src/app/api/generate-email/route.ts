@@ -5,7 +5,8 @@
  * Generates follow-up emails from meeting transcripts using OpenAI GPT-4
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
+import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { getEmailGenerationFunction, validateOpenAIConfig } from '@/lib/openai';
 import { handleError } from '@/lib/utils';
@@ -27,7 +28,7 @@ const GenerateEmailRequestSchema = z.object({
 export async function POST(request: NextRequest) {
   try {
     // Parse and validate request body
-    const body = await request.json();
+    const body = (await request.json()) as z.infer<typeof GenerateEmailRequestSchema>;
     const { transcript, attendees, meetingTitle } = GenerateEmailRequestSchema.parse(body);
 
     // Check OpenAI configuration

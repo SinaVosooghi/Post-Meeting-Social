@@ -93,8 +93,8 @@ export async function refreshGoogleToken(refreshToken: string): Promise<{
       'Content-Type': 'application/x-www-form-urlencoded',
     },
     body: new URLSearchParams({
-      client_id: process.env.GOOGLE_CLIENT_ID!,
-      client_secret: process.env.GOOGLE_CLIENT_SECRET!,
+      client_id: process.env.GOOGLE_CLIENT_ID ?? '',
+      client_secret: process.env.GOOGLE_CLIENT_SECRET ?? '',
       refresh_token: refreshToken,
       grant_type: 'refresh_token',
     }),
@@ -104,6 +104,10 @@ export async function refreshGoogleToken(refreshToken: string): Promise<{
     throw new Error('Failed to refresh Google access token');
   }
 
-  const tokens = await response.json();
+  const tokens = (await response.json()) as {
+    access_token: string;
+    expires_in: number;
+    refresh_token?: string;
+  };
   return tokens;
 }

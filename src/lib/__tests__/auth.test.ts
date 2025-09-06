@@ -12,7 +12,7 @@ describe('Authentication System', () => {
   it('should have auth configuration files', () => {
     const authConfigPath = path.join(__dirname, '../auth.config.ts');
     const authPath = path.join(__dirname, '../auth.ts');
-    
+
     expect(fs.existsSync(authConfigPath)).toBe(true);
     expect(fs.existsSync(authPath)).toBe(true);
   });
@@ -25,7 +25,7 @@ describe('Authentication System', () => {
   it('should have authentication pages', () => {
     const signinPagePath = path.join(__dirname, '../../app/auth/signin/page.tsx');
     const errorPagePath = path.join(__dirname, '../../app/auth/error/page.tsx');
-    
+
     expect(fs.existsSync(signinPagePath)).toBe(true);
     expect(fs.existsSync(errorPagePath)).toBe(true);
   });
@@ -38,7 +38,7 @@ describe('Authentication System', () => {
   it('should have comprehensive interfaces for authentication', () => {
     const masterInterfacesPath = path.join(__dirname, '../../types/master-interfaces.ts');
     expect(fs.existsSync(masterInterfacesPath)).toBe(true);
-    
+
     // Read the file and check for key interfaces
     const content = fs.readFileSync(masterInterfacesPath, 'utf-8');
     expect(content).toContain('FinancialAdvisor');

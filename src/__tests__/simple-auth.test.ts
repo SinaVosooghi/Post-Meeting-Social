@@ -26,7 +26,7 @@ describe('Authentication System', () => {
     const navigationPath = path.join(__dirname, '../components/navigation.tsx');
     const signinPath = path.join(__dirname, '../app/auth/signin/page.tsx');
     const errorPath = path.join(__dirname, '../app/auth/error/page.tsx');
-    
+
     expect(fs.existsSync(navigationPath)).toBe(true);
     expect(fs.existsSync(signinPath)).toBe(true);
     expect(fs.existsSync(errorPath)).toBe(true);
@@ -42,7 +42,7 @@ describe('Authentication System', () => {
     // Test that LinkedIn integration files exist
     const linkedinLibPath = path.join(__dirname, '../lib/linkedin.ts');
     const linkedinApiPath = path.join(__dirname, '../app/api/social/linkedin/route.ts');
-    
+
     expect(fs.existsSync(linkedinLibPath)).toBe(true);
     expect(fs.existsSync(linkedinApiPath)).toBe(true);
   });

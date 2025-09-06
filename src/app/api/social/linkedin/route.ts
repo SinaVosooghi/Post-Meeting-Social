@@ -1,14 +1,15 @@
 /**
  * LinkedIn Social Media API Endpoint
  * POST /api/social/linkedin - LinkedIn OAuth and publishing
- * 
+ *
  * Handles LinkedIn authentication, token management, and content publishing
  * Aligned with SocialMediaToken and SocialMediaPost interfaces
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
+import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
-import { 
+import {
   generateLinkedInAuthUrl,
   exchangeLinkedInCode,
   getLinkedInProfile,
@@ -16,7 +17,7 @@ import {
   validateLinkedInContent,
   createMockLinkedInPost,
   MOCK_LINKEDIN_PROFILE,
-  LinkedInRateLimiter
+  LinkedInRateLimiter,
 } from '@/lib/linkedin';
 
 // ============================================================================
@@ -39,7 +40,7 @@ export async function GET(request: NextRequest) {
     if (action === 'auth') {
       const authState = crypto.randomUUID();
       const authUrl = generateLinkedInAuthUrl(authState);
-      
+
       return NextResponse.json({
         success: true,
         data: {
@@ -69,7 +70,6 @@ export async function GET(request: NextRequest) {
       },
       { status: 400 }
     );
-
   } catch (error) {
     console.error('LinkedIn API error:', error);
 
@@ -105,19 +105,28 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const body = await request.json();
+    const body = (await request.json()) as {
+      action: 'publish' | 'validate' | 'optimize';
+      content: string;
+      hashtags?: string[];
+      linkUrl?: string;
+      meetingId?: string;
+    };
     const { action, ...params } = body;
 
     switch (action) {
-      case 'publish':
+      case 'publish': {
         return await handlePublishPost(params, session.user.id);
-      
-      case 'validate':
+      }
+
+      case 'validate': {
         return await handleValidateContent(params);
-      
-      case 'optimize':
+      }
+
+      case 'optimize': {
         return await handleOptimizeContent(params);
-        
+      }
+
       default:
         return NextResponse.json(
           {
@@ -131,7 +140,6 @@ export async function POST(request: NextRequest) {
           { status: 400 }
         );
     }
-
   } catch (error) {
     console.error('LinkedIn POST API error:', error);
 
@@ -160,7 +168,7 @@ async function handleOAuthCallback(code: string, state: string) {
   try {
     // For demo purposes, use mock data
     const useMockData = !process.env.LINKEDIN_CLIENT_ID || process.env.NODE_ENV === 'development';
-    
+
     if (useMockData) {
       return NextResponse.json({
         success: true,
@@ -198,10 +206,9 @@ async function handleOAuthCallback(code: string, state: string) {
         usingMockData: false,
       },
     });
-
   } catch (error) {
     console.error('LinkedIn OAuth callback error:', error);
-    
+
     return NextResponse.json(
       {
         success: false,
@@ -267,7 +274,7 @@ async function handlePublishPost(
   const rateLimiter = LinkedInRateLimiter.getInstance();
   if (!rateLimiter.canMakeRequest(userId)) {
     const resetTime = rateLimiter.getResetTime(userId);
-    
+
     return NextResponse.json(
       {
         success: false,
@@ -309,11 +316,11 @@ async function handlePublishPost(
 
   // For demo purposes, use mock publishing
   const useMockData = !process.env.LINKEDIN_CLIENT_ID || process.env.NODE_ENV === 'development';
-  
+
   if (useMockData) {
     const mockResult = await createMockLinkedInPost(optimized.optimizedText, optimized.hashtags);
     rateLimiter.recordRequest(userId);
-    
+
     return NextResponse.json({
       success: true,
       data: {
@@ -358,7 +365,7 @@ async function handlePublishPost(
  */
 async function handleValidateContent(params: { content: string }) {
   const validation = validateLinkedInContent(params.content);
-  
+
   return NextResponse.json({
     success: true,
     data: validation,
@@ -372,16 +379,13 @@ async function handleValidateContent(params: { content: string }) {
 /**
  * Handles content optimization
  */
-async function handleOptimizeContent(params: { 
-  content: string; 
-  hashtags?: string[];
-}) {
+async function handleOptimizeContent(params: { content: string; hashtags?: string[] }) {
   const optimized = optimizeContentForLinkedIn({
     text: params.content,
     hashtags: params.hashtags || [],
     platform: 'linkedin',
   });
-  
+
   return NextResponse.json({
     success: true,
     data: optimized,

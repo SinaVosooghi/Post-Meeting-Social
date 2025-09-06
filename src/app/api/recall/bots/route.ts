@@ -1,18 +1,19 @@
 /**
  * Recall.ai Meeting Bots API Endpoint
  * /api/recall/bots - Manage meeting bots
- * 
+ *
  * Handles bot scheduling, status checking, and transcript retrieval
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
+import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
-import { 
+import {
   scheduleMeetingBot,
   getBotStatus,
   cancelMeetingBot,
   listMeetingBots,
-  getMeetingTranscript 
+  getMeetingTranscript,
 } from '@/lib/recall-ai';
 import type { BotConfig, BotStatus } from '@/types';
 
@@ -47,7 +48,7 @@ export async function GET(request: NextRequest) {
     // Get specific bot status
     if (botId && !action) {
       const bot = await getBotStatus(botId);
-      
+
       return NextResponse.json({
         success: true,
         data: bot,
@@ -60,10 +61,12 @@ export async function GET(request: NextRequest) {
 
     // Get bot transcript
     if (botId && action === 'transcript') {
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
       const transcript = await getMeetingTranscript(botId);
-      
+
       return NextResponse.json({
         success: true,
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
         data: transcript,
         metadata: {
           timestamp: new Date().toISOString(),
@@ -75,7 +78,7 @@ export async function GET(request: NextRequest) {
     // List all bots
     const bots = await listMeetingBots({
       limit,
-      ...(status && { status }),
+      ...(status !== null && { status }),
     });
 
     return NextResponse.json({
@@ -94,7 +97,6 @@ export async function GET(request: NextRequest) {
         usingMockData: process.env.NODE_ENV === 'development' || !process.env.RECALL_AI_API_KEY,
       },
     });
-
   } catch (error) {
     console.error('Recall bots API error:', error);
 
@@ -130,14 +132,20 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const body = await request.json();
+    const body = (await request.json()) as {
+      action: 'schedule' | 'cancel' | 'status' | 'transcript';
+      meetingUrl?: string;
+      botId?: string;
+      config?: BotConfig;
+    };
     const { action, ...params } = body;
 
     switch (action) {
-      case 'schedule':
+      case 'schedule': {
         // Schedule a new meeting bot
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
         const { meetingUrl, config } = params;
-        
+
         if (!meetingUrl) {
           return NextResponse.json(
             {
@@ -152,13 +160,20 @@ export async function POST(request: NextRequest) {
           );
         }
 
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
         const botConfig: Partial<BotConfig> = {
-          botName: config?.botName || 'Post-Meeting Content Bot',
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
+          botName: config?.botName ?? 'Post-Meeting Content Bot',
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
           recordAudio: config?.recordAudio ?? true,
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
           recordVideo: config?.recordVideo ?? false,
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
           recordScreen: config?.recordScreen ?? false,
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
           transcriptionEnabled: config?.transcriptionEnabled ?? true,
-          webhookUrl: config?.webhookUrl || null,
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
+          webhookUrl: config?.webhookUrl ?? null,
         };
 
         const scheduledBot = await scheduleMeetingBot(meetingUrl, botConfig);
@@ -172,11 +187,12 @@ export async function POST(request: NextRequest) {
             action: 'schedule',
           },
         });
+      }
 
-      case 'cancel':
+      case 'cancel': {
         // Cancel an existing bot
         const { botId } = params;
-        
+
         if (!botId) {
           return NextResponse.json(
             {
@@ -205,11 +221,12 @@ export async function POST(request: NextRequest) {
             action: 'cancel',
           },
         });
+      }
 
-      case 'status':
+      case 'status': {
         // Get bot status
         const { botId: statusBotId } = params;
-        
+
         if (!statusBotId) {
           return NextResponse.json(
             {
@@ -235,11 +252,12 @@ export async function POST(request: NextRequest) {
             action: 'status',
           },
         });
+      }
 
-      case 'transcript':
+      case 'transcript': {
         // Get meeting transcript
-        const { botId: transcriptBotId } = params;
-        
+        const transcriptBotId = params.botId;
+
         if (!transcriptBotId) {
           return NextResponse.json(
             {
@@ -254,10 +272,12 @@ export async function POST(request: NextRequest) {
           );
         }
 
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
         const transcript = await getMeetingTranscript(transcriptBotId);
 
         return NextResponse.json({
           success: true,
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
           data: transcript,
           metadata: {
             timestamp: new Date().toISOString(),
@@ -265,6 +285,7 @@ export async function POST(request: NextRequest) {
             action: 'transcript',
           },
         });
+      }
 
       default:
         return NextResponse.json(
@@ -279,7 +300,6 @@ export async function POST(request: NextRequest) {
           { status: 400 }
         );
     }
-
   } catch (error) {
     console.error('Recall bots API error:', error);
 
@@ -345,7 +365,6 @@ export async function DELETE(request: NextRequest) {
         requestId: crypto.randomUUID(),
       },
     });
-
   } catch (error) {
     console.error('Recall bots API error:', error);
 
