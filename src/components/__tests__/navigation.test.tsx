@@ -131,10 +131,10 @@ describe('Navigation Component', () => {
     it('should show navigation links when authenticated', () => {
       renderWithSession(mockSession);
 
-      expect(screen.getAllByText('📊 Dashboard')[0]).toBeInTheDocument();
-      expect(screen.getAllByText('📅 Meetings')[0]).toBeInTheDocument();
-      expect(screen.getAllByText('⚙️ Automations')[0]).toBeInTheDocument();
-      expect(screen.getAllByText('🔧 Settings')[0]).toBeInTheDocument();
+      expect(screen.getAllByText('🎯 Demo')[0]).toBeInTheDocument();
+      expect(screen.getAllByText('📅 Calendar')[0]).toBeInTheDocument();
+      expect(screen.getAllByText('📋 Meetings')[0]).toBeInTheDocument();
+      expect(screen.getAllByText('⚙️ Settings')[0]).toBeInTheDocument();
     });
 
     it('should toggle user menu dropdown when clicked', async () => {
@@ -149,7 +149,7 @@ describe('Navigation Component', () => {
 
       await waitFor(() => {
         expect(screen.getByText('👤 Profile')).toBeInTheDocument();
-        expect(screen.getByText('⚙️ Settings')).toBeInTheDocument();
+        expect(screen.getAllByText('⚙️ Settings')[1]).toBeInTheDocument(); // Use the dropdown one
         expect(screen.getByText('🚪 Sign Out')).toBeInTheDocument();
       });
     });
@@ -239,10 +239,10 @@ describe('Navigation Component', () => {
       renderWithSession(mockSession);
 
       // Mobile menu should be visible (hidden on desktop)
-      expect(screen.getAllByText('📊 Dashboard')[0]).toBeInTheDocument();
-      expect(screen.getAllByText('📅 Meetings')[0]).toBeInTheDocument();
-      expect(screen.getAllByText('⚙️ Automations')[0]).toBeInTheDocument();
-      expect(screen.getAllByText('🔧 Settings')[0]).toBeInTheDocument();
+      expect(screen.getAllByText('🎯 Demo')[0]).toBeInTheDocument();
+      expect(screen.getAllByText('📅 Calendar')[0]).toBeInTheDocument();
+      expect(screen.getAllByText('📋 Meetings')[0]).toBeInTheDocument();
+      expect(screen.getAllByText('⚙️ Settings')[0]).toBeInTheDocument();
     });
   });
 });
