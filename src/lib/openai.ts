@@ -19,7 +19,7 @@ const OPENAI_CONFIG = {
   apiKey: process.env.OPENAI_API_KEY,
   timeout: 30000, // 30 seconds
   maxRetries: 3,
-  model: 'gpt-4' as const,
+  model: 'gpt-4o-mini' as const, // More available and cost-effective
 } as const;
 
 // Initialize OpenAI client dynamically

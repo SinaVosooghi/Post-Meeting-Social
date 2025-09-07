@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -12,10 +12,7 @@ import { Navigation } from '@/components/navigation';
 import type { SocialConnection, BotSettings } from '@/types/master-interfaces';
 
 export default function SettingsPage() {
-  const [socialConnections, setSocialConnections] = useState<SocialConnection[]>([
-    { platform: 'linkedin', connected: false },
-    { platform: 'facebook', connected: false },
-  ]);
+  const [socialConnections, setSocialConnections] = useState<SocialConnection[]>([]);
   const [botSettings, setBotSettings] = useState<BotSettings>({
     joinMinutesBefore: 5,
     autoSchedule: false,
@@ -24,6 +21,18 @@ export default function SettingsPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+
+  const [automations, setAutomations] = useState<Record<string, {
+    tone: string;
+    frequency: string;
+    autoGenerate: boolean;
+  }>>({});
+
+  const showToast = (message: string, type: 'success' | 'error') => {
+    setToast({ message, type });
+    setTimeout(() => setToast(null), 3000);
+  };
 
   const connectSocial = async (platform: 'linkedin' | 'facebook') => {
     setIsLoading(true);
@@ -33,22 +42,33 @@ export default function SettingsPage() {
       // Simulate OAuth flow
       await new Promise(resolve => setTimeout(resolve, 2000));
 
-      setSocialConnections(prev =>
-        prev.map(conn =>
-          conn.platform === platform
-            ? {
-                ...conn,
-                connected: true,
-                username: `${platform}_user_${Date.now()}`,
-                lastSync: new Date().toISOString(),
-              }
-            : conn
-        )
-      );
+      const response = await fetch('/api/settings/social', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          platform,
+          connected: true,
+          username: `${platform}_user_${Date.now()}`,
+          lastSync: new Date().toISOString(),
+          accessToken: `mock_${platform}_token_${Date.now()}`,
+        }),
+      });
 
-      setSuccess(`${platform.charAt(0).toUpperCase() + platform.slice(1)} connected successfully!`);
+      const result = await response.json();
+
+      if (result.success) {
+        setSocialConnections(result.data);
+        setSuccess(`${platform.charAt(0).toUpperCase() + platform.slice(1)} connected successfully!`);
+        showToast(`${platform.charAt(0).toUpperCase() + platform.slice(1)} connected successfully!`, 'success');
+      } else {
+        setError(result.error?.message || `Failed to connect ${platform}`);
+        showToast(result.error?.message || `Failed to connect ${platform}`, 'error');
+      }
     } catch (err) {
       setError(`Failed to connect ${platform}`);
+      showToast(`Failed to connect ${platform}`, 'error');
     } finally {
       setIsLoading(false);
     }
@@ -59,20 +79,29 @@ export default function SettingsPage() {
     setError(null);
 
     try {
-      // Simulate disconnect
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      const response = await fetch('/api/settings/social', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          platform,
+          connected: false,
+        }),
+      });
 
-      setSocialConnections(prev =>
-        prev.map(conn =>
-          conn.platform === platform
-            ? { ...conn, connected: false, username: undefined, lastSync: undefined }
-            : conn
-        )
-      );
+      const result = await response.json();
 
-      setSuccess(
-        `${platform.charAt(0).toUpperCase() + platform.slice(1)} disconnected successfully!`
-      );
+      if (result.success) {
+        setSocialConnections(result.data);
+        setSuccess(
+          `${platform.charAt(0).toUpperCase() + platform.slice(1)} disconnected successfully!`
+        );
+        showToast(`${platform.charAt(0).toUpperCase() + platform.slice(1)} disconnected successfully!`, 'success');
+      } else {
+        setError(result.error?.message || `Failed to disconnect ${platform}`);
+        showToast(result.error?.message || `Failed to disconnect ${platform}`, 'error');
+      }
     } catch (err) {
       setError(`Failed to disconnect ${platform}`);
     } finally {
@@ -85,12 +114,74 @@ export default function SettingsPage() {
     setError(null);
 
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      const response = await fetch('/api/settings/bot', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(botSettings),
+      });
 
-      setSuccess('Bot settings updated successfully!');
+      const result = await response.json();
+
+      if (result.success) {
+        setSuccess('Bot settings updated successfully!');
+        showToast('Bot settings updated successfully!', 'success');
+        // Update local state with the saved settings
+        setBotSettings(result.data);
+      } else {
+        const errorMessage = result.error?.message || 'Failed to update bot settings';
+        setError(errorMessage);
+        showToast(errorMessage, 'error');
+      }
     } catch (err) {
-      setError('Failed to update bot settings');
+      const errorMessage = 'Failed to update bot settings';
+      setError(errorMessage);
+      showToast(errorMessage, 'error');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const updateAutomation = (platform: string, field: string, value: string | boolean) => {
+    setAutomations(prev => ({
+      ...prev,
+      [platform]: {
+        ...prev[platform],
+        [field]: value,
+      },
+    }));
+  };
+
+  const saveAutomations = async () => {
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      const response = await fetch('/api/settings/automations', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(automations),
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        setSuccess('Automation settings updated successfully!');
+        showToast('Automation settings updated successfully!', 'success');
+        // Update local state with the saved settings
+        setAutomations(result.data);
+      } else {
+        const errorMessage = result.error?.message || 'Failed to update automation settings';
+        setError(errorMessage);
+        showToast(errorMessage, 'error');
+      }
+    } catch (err) {
+      const errorMessage = 'Failed to update automation settings';
+      setError(errorMessage);
+      showToast(errorMessage, 'error');
     } finally {
       setIsLoading(false);
     }
@@ -117,6 +208,57 @@ export default function SettingsPage() {
         return 'bg-gray-100 text-gray-800';
     }
   };
+
+  // Load settings on component mount
+  useEffect(() => {
+    const loadSettings = async () => {
+      try {
+        // Load bot settings
+        const botResponse = await fetch('/api/settings/bot');
+        const botResult = await botResponse.json();
+        
+        if (botResult.success) {
+          setBotSettings(botResult.data);
+        } else {
+          // Fallback to default settings if API fails
+          console.warn('Failed to load bot settings, using defaults:', botResult.error);
+        }
+
+        // Load social connections
+        const socialResponse = await fetch('/api/settings/social');
+        const socialResult = await socialResponse.json();
+        
+        if (socialResult.success) {
+          // If no data from API, use default connections
+          const connections = socialResult.data.length > 0 
+            ? socialResult.data 
+            : [
+                { platform: 'linkedin', connected: false },
+                { platform: 'facebook', connected: false },
+              ];
+          setSocialConnections(connections);
+        } else {
+          // Fallback to default connections if API fails
+          setSocialConnections([
+            { platform: 'linkedin', connected: false },
+            { platform: 'facebook', connected: false },
+          ]);
+        }
+
+        // Load automation settings
+        const automationResponse = await fetch('/api/settings/automations');
+        const automationResult = await automationResponse.json();
+        
+        if (automationResult.success) {
+          setAutomations(automationResult.data);
+        }
+      } catch (err) {
+        console.error('Failed to load settings:', err);
+      }
+    };
+
+    void loadSettings();
+  }, []);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
@@ -322,27 +464,39 @@ export default function SettingsPage() {
                           <div className="grid md:grid-cols-2 gap-4">
                             <div>
                               <Label className="text-sm font-medium">Content Tone</Label>
-                              <select className="w-full mt-1 p-2 border rounded-md">
-                                <option>Professional</option>
-                                <option>Casual</option>
-                                <option>Educational</option>
-                                <option>Promotional</option>
+                              <select 
+                                className="w-full mt-1 p-2 border rounded-md"
+                                value={automations[connection.platform]?.tone || 'Professional'}
+                                onChange={(e) => updateAutomation(connection.platform, 'tone', e.target.value)}
+                              >
+                                <option value="Professional">Professional</option>
+                                <option value="Casual">Casual</option>
+                                <option value="Educational">Educational</option>
+                                <option value="Promotional">Promotional</option>
                               </select>
                             </div>
 
                             <div>
                               <Label className="text-sm font-medium">Post Frequency</Label>
-                              <select className="w-full mt-1 p-2 border rounded-md">
-                                <option>Every meeting</option>
-                                <option>Daily</option>
-                                <option>Weekly</option>
-                                <option>Manual only</option>
+                              <select 
+                                className="w-full mt-1 p-2 border rounded-md"
+                                value={automations[connection.platform]?.frequency || 'Every meeting'}
+                                onChange={(e) => updateAutomation(connection.platform, 'frequency', e.target.value)}
+                              >
+                                <option value="Every meeting">Every meeting</option>
+                                <option value="Daily">Daily</option>
+                                <option value="Weekly">Weekly</option>
+                                <option value="Manual only">Manual only</option>
                               </select>
                             </div>
                           </div>
 
                           <div className="flex items-center space-x-2">
-                            <Switch id={`auto-${connection.platform}`} />
+                            <Switch 
+                              id={`auto-${connection.platform}`}
+                              checked={automations[connection.platform]?.autoGenerate || false}
+                              onCheckedChange={(checked) => updateAutomation(connection.platform, 'autoGenerate', checked)}
+                            />
                             <Label
                               htmlFor={`auto-${connection.platform}`}
                               className="text-sm font-medium"
@@ -355,11 +509,36 @@ export default function SettingsPage() {
                     </div>
                   ))}
                 </div>
+
+                <div className="mt-6">
+                  <Button
+                    onClick={() => void saveAutomations()}
+                    disabled={isLoading}
+                    className="w-full sm:w-auto"
+                  >
+                    {isLoading ? 'Saving...' : 'Save Automation Settings'}
+                  </Button>
+                </div>
               </Card>
             </TabsContent>
           </Tabs>
         </div>
       </div>
+
+      {/* Toast Notification */}
+      {toast && (
+        <div className="fixed top-4 right-4 z-50">
+          <div
+            className={`px-6 py-3 rounded-lg shadow-lg text-white font-medium ${
+              toast.type === 'success' 
+                ? 'bg-green-500' 
+                : 'bg-red-500'
+            }`}
+          >
+            {toast.message}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

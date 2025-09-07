@@ -175,7 +175,7 @@ export async function getUpcomingEvents(
         endTime: parseGoogleDate(event.end),
         timeZone: event.start?.timeZone ?? 'UTC',
         location: event.location ?? '',
-        meetingUrl: extractMeetingUrl(event.description ?? ''),
+        meetingUrl: extractMeetingUrl(event),
         provider: CalendarProvider.GOOGLE,
         calendarId: event.organizer?.email ?? calendarId,
         attendees:
@@ -330,7 +330,7 @@ export async function createCalendarEvent(
       endTime: parseGoogleDate(event.end),
       timeZone: event.start?.timeZone ?? 'UTC',
       location: event.location ?? location,
-      meetingUrl: extractMeetingUrl(event.description ?? ''),
+      meetingUrl: extractMeetingUrl(event),
       provider: CalendarProvider.GOOGLE,
       calendarId: event.organizer?.email ?? calendarId,
       attendees:
@@ -485,7 +485,7 @@ export async function updateCalendarEvent(
       endTime: parseGoogleDate(event.end),
       timeZone: event.start?.timeZone ?? 'UTC',
       location: event.location ?? updates.location ?? '',
-      meetingUrl: extractMeetingUrl(event.description ?? ''),
+      meetingUrl: extractMeetingUrl(event),
       provider: CalendarProvider.GOOGLE,
       calendarId: event.organizer?.email ?? calendarId,
       attendees:
@@ -582,10 +582,11 @@ export async function deleteCalendarEvent(
 // ============================================================================
 
 /**
- * Extracts meeting URL from event description
+ * Extracts meeting URL from event description and other fields
  */
-function extractMeetingUrl(description: string): string {
-  // Common meeting URL patterns
+function extractMeetingUrl(event: any): string {
+  // Check description first
+  const description = event.description ?? '';
   const patterns = [
     /https:\/\/(?:us\d+\.)?zoom\.us\/j\/\d+(?:\?[^\s]*)?/gi,
     /https:\/\/meet\.google\.com\/[a-z-]+/gi,
@@ -597,6 +598,20 @@ function extractMeetingUrl(description: string): string {
     const match = description.match(pattern);
     if (match) {
       return match[0];
+    }
+  }
+
+  // Check hangoutLink (Google Meet)
+  if (event.hangoutLink) {
+    return event.hangoutLink;
+  }
+
+  // Check conferenceData
+  if (event.conferenceData?.entryPoints) {
+    for (const entryPoint of event.conferenceData.entryPoints) {
+      if (entryPoint.entryPointType === 'video' && entryPoint.uri) {
+        return entryPoint.uri;
+      }
     }
   }
 
