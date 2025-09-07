@@ -5,8 +5,7 @@
  * Handles Google Calendar OAuth, event fetching, and meeting management
  */
 
-import { google } from 'googleapis';
-import type { calendar_v3 } from 'googleapis';
+import { google, calendar_v3 } from 'googleapis';
 import type { CalendarEvent, GoogleCalendarConfig, GoogleCalendarAttendee } from '@/types';
 import { CalendarProvider } from '@/types/master-interfaces';
 import { MeetingParticipantRole } from '@/types/master-interfaces';
@@ -70,18 +69,28 @@ const GOOGLE_CALENDAR_CONFIG: GoogleCalendarConfig = {
 /**
  * Creates authenticated Google Calendar client
  */
-export function createGoogleCalendarClient(accessToken: string) {
+export function createGoogleCalendarClient(accessToken: string, refreshToken?: string, expiresAt?: number) {
   const auth = new google.auth.OAuth2(
     GOOGLE_CALENDAR_CONFIG.clientId,
     GOOGLE_CALENDAR_CONFIG.clientSecret,
     GOOGLE_CALENDAR_CONFIG.redirectUri
   );
 
-  auth.setCredentials({
+  const credentials: any = {
     access_token: accessToken,
-  });
+  };
 
-  return google.calendar.calendar({ version: 'v3', auth });
+  if (refreshToken) {
+    credentials.refresh_token = refreshToken;
+  }
+
+  if (expiresAt) {
+    credentials.expiry_date = expiresAt * 1000; // Convert to milliseconds
+  }
+
+  auth.setCredentials(credentials);
+
+  return google.calendar({ version: 'v3', auth });
 }
 
 // ============================================================================
@@ -98,10 +107,12 @@ export async function getUpcomingEvents(
     timeMin?: Date;
     timeMax?: Date;
     calendarId?: string;
+    refreshToken?: string;
+    expiresAt?: number;
   } = {}
 ): Promise<CalendarEvent[]> {
   try {
-    const calendar = createGoogleCalendarClient(accessToken);
+    const calendar = createGoogleCalendarClient(accessToken, options.refreshToken, options.expiresAt);
 
     const { maxResults = 20, timeMin = new Date(), timeMax, calendarId = 'primary' } = options;
 

@@ -132,7 +132,7 @@ export interface FirmSettings {
 /**
  * Calendar event from Google Calendar API
  */
-export interface CalendarEvent {
+export interface GoogleCalendarEvent {
   id: string;
   summary: string;
   description?: string;
@@ -1730,7 +1730,7 @@ export interface CalendarAttendee {
   readonly responseStatus: 'needsAction' | 'declined' | 'tentative' | 'accepted';
   readonly isOrganizer: boolean;
   readonly isOptional: boolean;
-  readonly role: 'advisor' | 'client' | 'prospect' | 'colleague';
+  readonly role?: 'advisor' | 'client' | 'prospect' | 'colleague' | 'compliance_officer';
 }
 
 /**
@@ -1920,7 +1920,36 @@ export interface FacebookPostStatsResponse {
 }
 
 // ============================================================================
-// 12. DEPRECATIONS (Temporary aliases)
+// 12. ENVIRONMENT VARIABLES
+// ============================================================================
+
+/**
+ * Environment variables for the application
+ */
+export interface EnvironmentVariables {
+  readonly NODE_ENV: 'development' | 'production' | 'test';
+  readonly NEXTAUTH_URL: string;
+  readonly NEXTAUTH_SECRET: string;
+  readonly GOOGLE_CLIENT_ID: string;
+  readonly GOOGLE_CLIENT_SECRET: string;
+  readonly LINKEDIN_CLIENT_ID: string;
+  readonly LINKEDIN_CLIENT_SECRET: string;
+  readonly OPENAI_API_KEY: string;
+  readonly RECALL_AI_API_KEY: string;
+  readonly FACEBOOK_CLIENT_ID?: string;
+  readonly FACEBOOK_CLIENT_SECRET?: string;
+}
+
+// Extend NodeJS.ProcessEnv to include our environment variables
+declare global {
+  // eslint-disable-next-line @typescript-eslint/no-namespace
+  namespace NodeJS {
+    interface ProcessEnv extends EnvironmentVariables {}
+  }
+}
+
+// ============================================================================
+// 13. DEPRECATIONS (Temporary aliases)
 // ============================================================================
 
 /**
@@ -1931,7 +1960,7 @@ export type SocialPost = GeneratedContent;
 /**
  * @deprecated Use ClientMeeting instead - remove after migration
  */
-export type Meeting = ClientMeeting;
+// export type Meeting = ClientMeeting; // Removed to avoid conflicts
 
 /**
  * @deprecated Use GeneratedContent instead - remove after migration

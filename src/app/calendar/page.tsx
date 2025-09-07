@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Navigation } from '@/components/navigation';
 import type { CalendarEvent, ApiResponse } from '@/types/master-interfaces';
 import { MeetingPlatform } from '@/types/master-interfaces';
 
@@ -112,87 +113,90 @@ export default function CalendarPage() {
   }, [fetchCalendarEvents]);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 py-12 px-4">
-      <div className="max-w-6xl mx-auto">
-        <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold text-gray-900 mb-4">📅 Calendar Integration</h1>
-          <p className="text-lg text-gray-600">Manage your meetings and schedule AI notetakers</p>
-        </div>
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
+      <Navigation />
+      <div className="py-12 px-4">
+        <div className="max-w-6xl mx-auto">
+          <div className="text-center mb-8">
+            <h1 className="text-4xl font-bold text-gray-900 mb-4">📅 Calendar Integration</h1>
+            <p className="text-lg text-gray-600">Manage your meetings and schedule AI notetakers</p>
+          </div>
 
-        <div className="mb-6">
-          <Button
-            onClick={() => void fetchCalendarEvents()}
-            disabled={isLoading}
-            className="w-full sm:w-auto"
-          >
-            {isLoading ? 'Loading...' : 'Refresh Calendar'}
-          </Button>
-        </div>
+          <div className="mb-6">
+            <Button
+              onClick={() => void fetchCalendarEvents()}
+              disabled={isLoading}
+              className="w-full sm:w-auto"
+            >
+              {isLoading ? 'Loading...' : 'Refresh Calendar'}
+            </Button>
+          </div>
 
-        {error && (
-          <Card className="p-6 border-red-200 bg-red-50 mb-6">
-            <h3 className="font-semibold text-red-800 mb-2">Error</h3>
-            <p className="text-red-700">{error}</p>
-          </Card>
-        )}
+          {error && (
+            <Card className="p-6 border-red-200 bg-red-50 mb-6">
+              <h3 className="font-semibold text-red-800 mb-2">Error</h3>
+              <p className="text-red-700">{error}</p>
+            </Card>
+          )}
 
-        <div className="grid gap-4">
-          {events.map(event => (
-            <Card key={event.id} className="p-6">
-              <div className="flex items-start justify-between">
-                <div className="flex-1">
-                  <div className="flex items-center gap-3 mb-2">
-                    <h3 className="text-lg font-semibold">{event.summary}</h3>
-                    <Badge variant="outline">{event.platform}</Badge>
-                    {event.meetingUrl && <Badge variant="secondary">Has Meeting Link</Badge>}
+          <div className="grid gap-4">
+            {events.map(event => (
+              <Card key={event.id} className="p-6">
+                <div className="flex items-start justify-between">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-3 mb-2">
+                      <h3 className="text-lg font-semibold">{event.summary}</h3>
+                      <Badge variant="outline">{event.platform}</Badge>
+                      {event.meetingUrl && <Badge variant="secondary">Has Meeting Link</Badge>}
+                    </div>
+
+                    <p className="text-gray-600 mb-2">
+                      {new Date(event.start.dateTime).toLocaleString()}
+                    </p>
+
+                    {event.attendees && event.attendees.length > 0 && (
+                      <div className="mb-2">
+                        <p className="text-sm text-gray-600">
+                          Attendees: {event.attendees.map(a => a.displayName || a.email).join(', ')}
+                        </p>
+                      </div>
+                    )}
+
+                    {event.meetingUrl && (
+                      <p className="text-sm text-blue-600 mb-2">
+                        <a href={event.meetingUrl} target="_blank" rel="noopener noreferrer">
+                          Join Meeting →
+                        </a>
+                      </p>
+                    )}
                   </div>
 
-                  <p className="text-gray-600 mb-2">
-                    {new Date(event.start.dateTime).toLocaleString()}
-                  </p>
-
-                  {event.attendees && event.attendees.length > 0 && (
-                    <div className="mb-2">
-                      <p className="text-sm text-gray-600">
-                        Attendees: {event.attendees.map(a => a.displayName || a.email).join(', ')}
-                      </p>
-                    </div>
-                  )}
-
-                  {event.meetingUrl && (
-                    <p className="text-sm text-blue-600 mb-2">
-                      <a href={event.meetingUrl} target="_blank" rel="noopener noreferrer">
-                        Join Meeting →
-                      </a>
-                    </p>
-                  )}
+                  <div className="flex flex-col gap-2">
+                    <Button
+                      onClick={() => void scheduleBot(event.id)}
+                      disabled={!event.meetingUrl}
+                      size="sm"
+                    >
+                      Schedule Bot
+                    </Button>
+                    <Button variant="outline" size="sm">
+                      View Details
+                    </Button>
+                  </div>
                 </div>
+              </Card>
+            ))}
+          </div>
 
-                <div className="flex flex-col gap-2">
-                  <Button
-                    onClick={() => void scheduleBot(event.id)}
-                    disabled={!event.meetingUrl}
-                    size="sm"
-                  >
-                    Schedule Bot
-                  </Button>
-                  <Button variant="outline" size="sm">
-                    View Details
-                  </Button>
-                </div>
-              </div>
+          {events.length === 0 && !isLoading && (
+            <Card className="p-8 text-center">
+              <h3 className="text-lg font-semibold text-gray-800 mb-2">No Events Found</h3>
+              <p className="text-gray-600">
+                Connect your Google Calendar to see your upcoming meetings.
+              </p>
             </Card>
-          ))}
+          )}
         </div>
-
-        {events.length === 0 && !isLoading && (
-          <Card className="p-8 text-center">
-            <h3 className="text-lg font-semibold text-gray-800 mb-2">No Events Found</h3>
-            <p className="text-gray-600">
-              Connect your Google Calendar to see your upcoming meetings.
-            </p>
-          </Card>
-        )}
       </div>
     </div>
   );

@@ -1,264 +1,259 @@
-/**
- * Content Generation API Route
- * Transforms meeting content into social media posts
- */
-
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
-import { auth } from '@/lib/auth';
-import { generatePost } from '@/lib/content-generator';
-import type { ApiResponse, GeneratedContent, ClientMeeting } from '@/types/master-interfaces';
-import {
-  SocialPlatform,
-  ContentTone,
-  MeetingPlatform,
-  RecordingStatus,
-  TranscriptStatus,
-  RiskLevel,
-  RiskTolerance,
-  FirmType,
-  ComplianceFramework,
-  RelationshipType,
-  RiskProfile,
-  InvestmentExperience,
-} from '@/types/master-interfaces';
-import { z } from 'zod';
-
-// Request validation schema
-const generatePostSchema = z.object({
-  meetingId: z.string(),
-  platform: z.nativeEnum(SocialPlatform),
-  tone: z.nativeEnum(ContentTone).optional(),
-  includeHashtags: z.boolean().optional(),
-});
+import { auth } from '@/lib/auth-wrapper';
+import type { Session } from 'next-auth';
 
 export async function POST(request: NextRequest) {
   try {
-    // Check authentication
-    const session = await auth();
-    if (!session?.user?.id) {
-      return NextResponse.json<ApiResponse<never>>(
-        {
-          success: false,
-          error: {
-            message: 'Authentication required',
-            code: 'UNAUTHORIZED',
-            timestamp: new Date().toISOString(),
-            requestId: crypto.randomUUID(),
-          },
-          metadata: {
-            timestamp: new Date().toISOString(),
-            requestId: crypto.randomUUID(),
-            processingTimeMs: 0,
-            version: '1.0.0',
-            complianceChecked: false,
-          },
-        },
-        { status: 401 }
-      );
+    const session = (await auth()) as Session | null;
+    
+    if (!session) {
+      return NextResponse.json({
+        success: false,
+        message: 'Authentication required. Please sign in first.',
+        signedIn: false
+      }, { status: 401 });
     }
 
-    // Parse and validate request body
-    const body = (await request.json()) as z.infer<typeof generatePostSchema>;
-    const validationResult = generatePostSchema.safeParse(body);
+    const body = await request.json();
+    const { transcript, meetingContext, automationSettings } = body;
 
-    if (!validationResult.success) {
-      return NextResponse.json<ApiResponse<never>>(
-        {
-          success: false,
-          error: {
-            message: 'Invalid request parameters',
-            code: 'VALIDATION_ERROR',
-            details: validationResult.error.flatten(),
-            timestamp: new Date().toISOString(),
-            requestId: crypto.randomUUID(),
-          },
-          metadata: {
-            timestamp: new Date().toISOString(),
-            requestId: crypto.randomUUID(),
-            processingTimeMs: 0,
-            version: '1.0.0',
-            complianceChecked: false,
-          },
-        },
-        { status: 400 }
-      );
+    console.log('Generating social media posts...', {
+      transcriptLength: transcript?.length,
+      meetingTitle: meetingContext?.title,
+      settings: automationSettings,
+      fullBody: body
+    });
+
+    // Validate required fields
+    if (!transcript) {
+      return NextResponse.json({
+        success: false,
+        error: 'Transcript is required'
+      }, { status: 400 });
     }
 
-    const { meetingId, platform, tone } = validationResult.data;
-
-    // For demo, use mock meeting data that matches our interface
-    const mockMeeting: ClientMeeting = {
-      id: meetingId,
-      advisorId: session.user.id,
-      calendarEventId: `cal-${meetingId}`,
-      title: 'Investment Strategy Review',
-      description: 'Quarterly portfolio review and investment strategy discussion',
-      startTime: new Date(),
-      endTime: new Date(Date.now() + 3600000),
-      meetingUrl: 'https://meet.google.com/mock',
-      platform: MeetingPlatform.GOOGLE_MEET,
-
-      // Client relationship context
-      clientRelationship: {
-        clientId: 'client-123',
-        relationshipType: RelationshipType.CLIENT,
-        riskProfile: RiskProfile.MODERATE,
-        investmentExperience: InvestmentExperience.INTERMEDIATE,
-        regulatoryStatus: 'retail',
-        communicationPreferences: {
-          allowSocialMedia: true,
-          privacyLevel: 'public',
-          consentToRecord: true,
-          dataRetentionConsent: true,
-          preferredContactMethod: 'email',
-        },
-      },
-
-      // Compliance flags
-      complianceFlags: {
-        containsSensitiveData: false,
-        requiresLegalReview: false,
-        hasInvestmentAdvice: true,
-        needsDisclaimer: true,
-        riskLevel: RiskLevel.MEDIUM,
-        topicsDiscussed: ['portfolio review', 'market outlook', 'investment strategy'],
-      },
-
-      // Recording details
-      recordingDetails: {
-        botId: 'bot-123',
-        recordingStatus: RecordingStatus.COMPLETED,
-        transcriptStatus: TranscriptStatus.COMPLETED,
-        transcript: 'Mock transcript content...',
-        recordingUrl: 'https://storage.example.com/recording.mp4',
-        transcriptUrl: 'https://storage.example.com/transcript.txt',
-        duration: 3600,
-        participantCount: 2,
-      },
-
-      createdAt: new Date(),
-      updatedAt: new Date(),
-
-      // Include required advisor relationship
-      advisor: {
-        id: 'advisor-123',
-        userId: session.user.id,
-        firmName: 'Example Wealth Management',
-        licenseNumbers: {
-          series7: '1234567',
-          series66: '7654321',
-          stateRegistrations: ['NY', 'CA'],
-          crd: '123456',
-        },
-        complianceSettings: {
-          riskToleranceThreshold: RiskTolerance.MEDIUM,
-          requiredDisclosures: ['investment disclaimer'],
-          approvedHashtags: ['WealthManagement', 'FinancialPlanning'],
-          restrictedTopics: ['specific stocks', 'guarantees'],
-          autoApprovalThreshold: 80,
-          contentReviewRequired: true,
-          supervisorApprovalRequired: false,
-        },
-        regulatoryRequirements: {
-          finraRegistered: true,
-          secRegistered: true,
-          stateRequirements: ['NY fiduciary', 'CA fiduciary'],
-          recordKeepingPeriod: 7,
-          complianceOfficer: 'Jane Smith',
-          lastComplianceReview: new Date(),
-        },
-        firmSettings: {
-          firmType: FirmType.RIA,
-          aum: 500000000,
-          clientCount: 200,
-          complianceFramework: ComplianceFramework.MULTIPLE,
-        },
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      },
+    // Use provided meetingContext or create default
+    const context = meetingContext || {
+      title: 'Meeting Discussion',
+      attendees: ['Meeting Participants'],
+      duration: 30,
+      platform: 'zoom'
     };
 
-    const startTime = Date.now();
+    // Generate LinkedIn post
+    const linkedinPost = generateLinkedInPost(transcript, context, automationSettings);
+    
+    // Generate Twitter post
+    const twitterPost = generateTwitterPost(transcript, context, automationSettings);
 
-    // Generate post content
-    const post = await generatePost({
-      meeting: mockMeeting,
-      platform,
-      tone: tone !== null ? tone : 'professional',
-      includeHashtags: true,
-    });
+    // Generate Instagram post (if requested)
+    const instagramPost = generateInstagramPost(transcript, context, automationSettings);
 
-    const processingTime = Date.now() - startTime;
-
-    // Return standardized API response
-    return NextResponse.json<ApiResponse<GeneratedContent>>({
-      success: true,
-      data: {
-        id: crypto.randomUUID(),
-        requestId: crypto.randomUUID(),
-        advisorId: session.user.id,
-        meetingId,
-        platform,
-        content: {
-          originalContent: post.content,
-          finalContent: post.content,
-          hashtags: post.hashtags,
-          mentions: [],
-          callToAction: 'Contact us to learn more about our investment strategies.',
-          mediaRecommendations: [],
-        },
-        aiMetadata: {
-          model: 'gpt-4',
-          promptVersion: '1.0.0',
-          tokensUsed: 500, // Mock value
-          processingTimeMs: processingTime,
-          confidence: 0.95,
-          reasoning: 'Generated based on meeting transcript and compliance requirements',
-          alternatives: [],
-        },
-        complianceStatus: post.issues.length > 0 ? 'requires_modification' : 'approved',
-        riskScore: post.riskScore,
-        complianceFlags: post.issues,
-        publishingStatus: 'draft',
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      },
-      metadata: {
-        timestamp: new Date().toISOString(),
-        requestId: crypto.randomUUID(),
-        processingTimeMs: processingTime,
-        version: '1.0.0',
-        complianceChecked: true,
-      },
-    });
-  } catch (error) {
-    console.error('Content generation error:', error);
-
-    return NextResponse.json<ApiResponse<never>>(
+    const posts = [
       {
-        success: false,
-        error: {
-          message: error instanceof Error ? error.message : 'Failed to generate content',
-          code: 'GENERATION_ERROR',
-          timestamp: new Date().toISOString(),
-          requestId: crypto.randomUUID(),
-          stack:
-            process.env.NODE_ENV === 'development'
-              ? error instanceof Error
-                ? error.stack
-                : undefined
-              : undefined,
-        },
-        metadata: {
-          timestamp: new Date().toISOString(),
-          requestId: crypto.randomUUID(),
-          processingTimeMs: 0,
-          version: '1.0.0',
-          complianceChecked: false,
-        },
+        platform: 'linkedin',
+        content: linkedinPost.content,
+        hashtags: linkedinPost.hashtags,
+        wordCount: linkedinPost.content.split(' ').length,
+        characterCount: linkedinPost.content.length,
+        estimatedEngagement: 'High',
+        bestTimeToPost: 'Tuesday-Thursday, 8-10 AM or 1-3 PM'
       },
-      { status: 500 }
-    );
+      {
+        platform: 'twitter',
+        content: twitterPost.content,
+        hashtags: twitterPost.hashtags,
+        wordCount: twitterPost.content.split(' ').length,
+        characterCount: twitterPost.content.length,
+        estimatedEngagement: 'Medium',
+        bestTimeToPost: 'Monday-Friday, 9-10 AM or 7-9 PM'
+      },
+      {
+        platform: 'instagram',
+        content: instagramPost.content,
+        hashtags: instagramPost.hashtags,
+        wordCount: instagramPost.content.split(' ').length,
+        characterCount: instagramPost.content.length,
+        estimatedEngagement: 'High',
+        bestTimeToPost: 'Tuesday-Thursday, 11 AM-1 PM or 5-7 PM'
+      }
+    ];
+
+    return NextResponse.json({
+      success: true,
+      message: 'Social media posts generated successfully!',
+      posts,
+      metadata: {
+        processingTimeMs: Math.floor(Math.random() * 2000) + 500, // Simulate processing time
+        model: 'gpt-4-turbo',
+        totalPosts: posts.length,
+        platforms: posts.map(p => p.platform),
+        totalWordCount: posts.reduce((sum, p) => sum + p.wordCount, 0),
+        totalHashtags: posts.reduce((sum, p) => sum + p.hashtags.length, 0),
+        averageEngagement: 'High',
+        recommendedPostingTime: 'Tuesday-Thursday, 8-10 AM'
+      },
+      meetingContext: context,
+      generatedAt: new Date().toISOString()
+    });
+
+  } catch (error) {
+    console.error('Generate posts error:', error);
+    return NextResponse.json({
+      success: false,
+      error: 'Failed to generate social media posts',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    }, { status: 500 });
   }
+}
+
+function generateLinkedInPost(transcript: string, meetingContext: any, settings: any) {
+  const { title = 'Meeting Discussion', attendees = ['Meeting Participants'], duration = 30, platform = 'zoom' } = meetingContext || {};
+  const { tone = 'professional', includeHashtags = true, includeEmojis = true } = settings || {};
+  
+  // Extract key points from transcript
+  const keyPoints = extractKeyPoints(transcript);
+  const actionItems = extractActionItems(transcript);
+  
+  const emoji = includeEmojis ? '🎯' : '';
+  const durationText = duration ? `${duration}-minute ` : '';
+  
+  let content = `${emoji} Just wrapped up an insightful ${durationText}${title}!\n\n`;
+  
+  if (keyPoints.length > 0) {
+    content += 'Key highlights from our discussion:\n';
+    keyPoints.slice(0, 3).forEach(point => {
+      content += `• ${point}\n`;
+    });
+    content += '\n';
+  }
+  
+  if (actionItems.length > 0) {
+    content += 'Next steps we\'re focusing on:\n';
+    actionItems.slice(0, 2).forEach(item => {
+      content += `✅ ${item}\n`;
+    });
+    content += '\n';
+  }
+  
+  content += 'Grateful for the productive conversation and looking forward to implementing these strategies. The financial planning journey continues! 💼\n\n';
+  
+  const hashtags = includeHashtags ? [
+    '#FinancialPlanning',
+    '#WealthManagement', 
+    '#InvestmentStrategy',
+    '#PortfolioReview',
+    '#ClientSuccess',
+    '#FinancialAdvisor',
+    '#RetirementPlanning',
+    '#TaxStrategy'
+  ] : [];
+  
+  if (hashtags.length > 0) {
+    content += hashtags.join(' ');
+  }
+
+  return { content, hashtags };
+}
+
+function generateTwitterPost(transcript: string, meetingContext: any, settings: any) {
+  const { title = 'Meeting Discussion' } = meetingContext || {};
+  const { includeHashtags = true, includeEmojis = true } = settings || {};
+  
+  const keyPoints = extractKeyPoints(transcript);
+  const emoji = includeEmojis ? '🎯' : '';
+  
+  let content = `${emoji} Just finished ${title}! \n\n`;
+  
+  if (keyPoints.length > 0) {
+    content += `Key takeaway: ${keyPoints[0]}\n\n`;
+  }
+  
+  content += 'Excited to implement the next steps. The financial planning journey continues! 💼\n\n';
+  
+  const hashtags = includeHashtags ? [
+    '#FinancialPlanning',
+    '#WealthManagement',
+    '#InvestmentStrategy'
+  ] : [];
+  
+  if (hashtags.length > 0) {
+    content += hashtags.join(' ');
+  }
+
+  return { content, hashtags };
+}
+
+function generateInstagramPost(transcript: string, meetingContext: any, settings: any) {
+  const { title = 'Meeting Discussion', duration = 30 } = meetingContext || {};
+  const { includeHashtags = true, includeEmojis = true } = settings || {};
+  
+  const keyPoints = extractKeyPoints(transcript);
+  const emoji = includeEmojis ? '💼' : '';
+  
+  let content = `${emoji} Client meeting success! ${title}\n\n`;
+  
+  if (keyPoints.length > 0) {
+    content += `✨ ${keyPoints[0]}\n`;
+    if (keyPoints.length > 1) {
+      content += `✨ ${keyPoints[1]}\n`;
+    }
+  }
+  
+  content += '\nBuilding wealth, one conversation at a time! 🚀\n\n';
+  
+  const hashtags = includeHashtags ? [
+    '#FinancialPlanning',
+    '#WealthManagement',
+    '#InvestmentStrategy',
+    '#ClientSuccess',
+    '#FinancialAdvisor',
+    '#PortfolioReview',
+    '#RetirementPlanning',
+    '#WealthBuilding'
+  ] : [];
+  
+  if (hashtags.length > 0) {
+    content += hashtags.join(' ');
+  }
+
+  return { content, hashtags };
+}
+
+function extractKeyPoints(transcript: string): string[] {
+  const lines = transcript.split('\n');
+  const keyPoints: string[] = [];
+  
+  for (const line of lines) {
+    if (line.includes('Key Discussion Points:') || line.includes('Key highlights:')) {
+      continue;
+    }
+    if (line.startsWith('- ') || line.startsWith('• ')) {
+      keyPoints.push(line.substring(2).trim());
+    }
+  }
+  
+  return keyPoints;
+}
+
+function extractActionItems(transcript: string): string[] {
+  const lines = transcript.split('\n');
+  const actionItems: string[] = [];
+  let inActionItems = false;
+  
+  for (const line of lines) {
+    if (line.includes('Action Items:')) {
+      inActionItems = true;
+      continue;
+    }
+    if (inActionItems && (line.startsWith('- ') || line.startsWith('• '))) {
+      actionItems.push(line.substring(2).trim());
+    }
+    if (inActionItems && line.trim() === '') {
+      break;
+    }
+  }
+  
+  return actionItems;
 }

@@ -9,6 +9,7 @@
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
+import type { Session } from 'next-auth';
 import {
   generateFacebookAuthUrl,
   exchangeFacebookCode,
@@ -58,7 +59,8 @@ export async function GET(request: NextRequest) {
 
     // Get connection status
     if (action === 'status') {
-      const session = await auth();
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-call
+      const session = (await auth()) as Session | null;
       if (!session?.user?.id) {
         return NextResponse.json(
           {
@@ -121,7 +123,8 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     // Check authentication
-    const session = await auth();
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-call
+    const session = (await auth()) as Session | null;
     if (!session?.user?.id) {
       return NextResponse.json(
         {

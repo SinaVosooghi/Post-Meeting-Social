@@ -83,6 +83,12 @@ export default function HomePage() {
 
   // Handle post generation
   const handleGeneratePosts = async () => {
+    // Check if user is authenticated
+    if (!session?.user) {
+      setError('Please sign in to generate posts');
+      return;
+    }
+
     setIsGenerating(true);
     setError(null);
 
@@ -127,6 +133,12 @@ export default function HomePage() {
 
   // Handle email generation
   const handleGenerateEmail = async () => {
+    // Check if user is authenticated
+    if (!session?.user) {
+      setError('Please sign in to generate email');
+      return;
+    }
+
     setIsGenerating(true);
     setError(null);
 
@@ -254,6 +266,11 @@ export default function HomePage() {
               <div className="flex gap-4">
                 <button
                   onClick={() => {
+                    if (!session?.user) {
+                      // Redirect to sign in
+                      window.location.href = '/api/auth/signin';
+                      return;
+                    }
                     void handleGeneratePosts();
                   }}
                   disabled={isGenerating || !transcript.trim()}
@@ -264,6 +281,8 @@ export default function HomePage() {
                       <span className="inline-block animate-spin mr-2">⏳</span>
                       Generating Posts...
                     </>
+                  ) : !session?.user ? (
+                    '🚀 Sign In to Generate Posts'
                   ) : (
                     '🚀 Generate Social Posts'
                   )}
@@ -271,6 +290,11 @@ export default function HomePage() {
 
                 <button
                   onClick={() => {
+                    if (!session?.user) {
+                      // Redirect to sign in
+                      window.location.href = '/api/auth/signin';
+                      return;
+                    }
                     void handleGenerateEmail();
                   }}
                   disabled={isGenerating || !transcript.trim()}
@@ -281,6 +305,8 @@ export default function HomePage() {
                       <span className="inline-block animate-spin mr-2">⏳</span>
                       Generating Email...
                     </>
+                  ) : !session?.user ? (
+                    '📧 Sign In to Generate Email'
                   ) : (
                     '📧 Generate Follow-up Email'
                   )}

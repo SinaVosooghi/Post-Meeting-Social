@@ -20,7 +20,7 @@ import { recallLogger } from './logger';
 // ============================================================================
 
 const RECALL_API_CONFIG = {
-  baseUrl: 'https://api.recall.ai/api/v1',
+  baseUrl: 'https://us-east-1.recall.ai/api/v1',
   apiKey: process.env.RECALL_AI_API_KEY,
   defaultConfig: {
     record_audio: true,
@@ -33,7 +33,7 @@ const RECALL_API_CONFIG = {
       format_text: true,
       include_speaker_labels: true,
     },
-    webhook_url: process.env.NEXTAUTH_URL + '/api/webhooks/recall',
+    // webhook_url: process.env.NEXTAUTH_URL + '/api/webhooks/recall', // Commented out - localhost URLs are blocked by Recall.ai WAF
   },
 };
 
@@ -61,8 +61,8 @@ async function recallApiRequest<T>(endpoint: string, options: RequestInit = {}):
     throw new Error(`Recall.ai API error (${response.status}): ${error}`);
   }
 
-  const jsonResponse = (await response.json()) as RecallApiResponse<T>;
-  return jsonResponse.data;
+  const jsonResponse = (await response.json()) as T;
+  return jsonResponse;
 }
 
 // ============================================================================
@@ -78,9 +78,9 @@ export async function scheduleMeetingBot(
 ): Promise<RecallBot> {
   try {
     // For development/demo - return mock bot only if no API key
-    if (!RECALL_API_CONFIG.apiKey || RECALL_API_CONFIG.apiKey === 'your-recall-ai-api-key') {
-      return createMockBot(meetingUrl, config);
-    }
+    // if (!RECALL_API_CONFIG.apiKey || RECALL_API_CONFIG.apiKey === 'your-recall-ai-api-key') {
+    //   return createMockBot(meetingUrl, config);
+    // }
 
     // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
     const botConfig = {
@@ -92,10 +92,12 @@ export async function scheduleMeetingBot(
       ...config,
     };
 
-    const response = await recallApiRequest<RecallBotApi>('/bots', {
-      method: 'POST',
-      body: JSON.stringify(botConfig),
-    });
+    // Try real API first, fall back to mock on error
+    try {
+      const response = await recallApiRequest<RecallBotApi>('/bot/', {
+        method: 'POST',
+        body: JSON.stringify(botConfig),
+      });
 
     return {
       id: response.id,
@@ -130,6 +132,11 @@ export async function scheduleMeetingBot(
         transcriptWordCount: null,
       },
     };
+    } catch (apiError) {
+      console.log('Recall.ai bot scheduling API failed:', apiError);
+      // TODO: Fix real API instead of falling back to mock
+      throw apiError;
+    }
   } catch (error) {
     recallLogger.error('Failed to schedule meeting bot', error);
     throw new Error(
@@ -148,7 +155,7 @@ export async function getBotStatus(botId: string): Promise<RecallBot> {
       return getMockBotStatus(botId);
     }
 
-    const response = await recallApiRequest<RecallBotApi>(`/bots/${botId}`);
+    const response = await recallApiRequest<RecallBotApi>(`/bot/${botId}/`);
 
     return {
       id: response.id,
@@ -196,7 +203,7 @@ export async function cancelMeetingBot(botId: string): Promise<void> {
       return;
     }
 
-    await recallApiRequest(`/bots/${botId}`, {
+    await recallApiRequest(`/bot/${botId}/`, {
       method: 'DELETE',
     });
   } catch (error) {
@@ -220,51 +227,85 @@ export async function listMeetingBots(
 ): Promise<RecallBot[]> {
   try {
     // For development/demo - return mock bots only if no API key
-    if (!RECALL_API_CONFIG.apiKey || RECALL_API_CONFIG.apiKey === 'your-recall-ai-api-key') {
-      return getMockBotList(options);
-    }
+    // if (!RECALL_API_CONFIG.apiKey || RECALL_API_CONFIG.apiKey === 'your-recall-ai-api-key' || RECALL_API_CONFIG.apiKey === '') {
+    //   console.log('Using mock data for Recall.ai - no API key provided');
+    //   return getMockBotList(options);
+    // }
 
-    const params = new URLSearchParams();
-    if (options.limit) {
-      params.append('limit', options.limit.toString());
-    }
-    if (options.status !== null) {
-      params.append('status', options.status);
-    }
-    if (options.dateFrom) {
-      params.append('created_after', options.dateFrom.toISOString());
-    }
-    if (options.dateTo) {
-      params.append('created_before', options.dateTo.toISOString());
-    }
+    // Try real API first, fall back to mock on error
+    try {
+      const params = new URLSearchParams();
+      if (options.limit) {
+        params.append('limit', options.limit.toString());
+      }
+      if (options.status && options.status !== null) {
+        params.append('status', options.status);
+      }
+      if (options.dateFrom) {
+        params.append('created_after', options.dateFrom.toISOString());
+      }
+      if (options.dateTo) {
+        params.append('created_before', options.dateTo.toISOString());
+      }
 
-    const response = await recallApiRequest<RecallBotApi[]>(`/bots?${params.toString()}`);
+      const response = await recallApiRequest<{count: number, next: string | null, previous: string | null, results: RecallBotApi[]}>(`/bot/?${params.toString()}`);
 
-    return response.map(bot => ({
-      id: bot.id,
-      meetingUrl: bot.meeting_url,
-      status: bot.status,
-      botName: bot.bot_name || 'Meeting Bot',
-      scheduledAt: new Date(bot.created_at),
-      startedAt: bot.started_at ? new Date(bot.started_at) : null,
-      endedAt: bot.ended_at ? new Date(bot.ended_at) : null,
-      recordingUrl: bot.recording_url || null,
-      transcriptUrl: bot.transcript_url || null,
-      config: {
-        recordAudio: bot.record_audio || true,
-        recordVideo: bot.record_video || false,
-        recordScreen: bot.record_screen || false,
-        transcriptionEnabled: true,
-        botName: bot.bot_name || 'Meeting Bot',
-        webhookUrl: bot.webhook_url || null,
-      },
-      metadata: {
-        meetingPlatform: detectMeetingPlatform(bot.meeting_url),
-        duration: bot.duration || null,
-        participantCount: bot.participant_count || null,
-        transcriptWordCount: bot.transcript_word_count || null,
-      },
-    }));
+      return response.results.map(bot => {
+        // Handle meeting_url which might be a string or object
+        let meetingUrl: string;
+        if (typeof bot.meeting_url === 'string') {
+          meetingUrl = bot.meeting_url;
+        } else if (bot.meeting_url && typeof bot.meeting_url === 'object') {
+          // If it's an object, try to construct URL from meeting_id and platform
+          const meetingData = bot.meeting_url as any;
+          if (meetingData.meeting_id && meetingData.platform) {
+            if (meetingData.platform === 'google_meet') {
+              meetingUrl = `https://meet.google.com/${meetingData.meeting_id}`;
+            } else if (meetingData.platform === 'zoom') {
+              meetingUrl = `https://zoom.us/j/${meetingData.meeting_id}`;
+            } else if (meetingData.platform === 'microsoft_teams') {
+              meetingUrl = `https://teams.microsoft.com/l/meetup-join/${meetingData.meeting_id}`;
+            } else {
+              meetingUrl = meetingData.meeting_id || 'unknown';
+            }
+          } else {
+            meetingUrl = 'unknown';
+          }
+        } else {
+          meetingUrl = 'unknown';
+        }
+
+        return {
+          id: bot.id,
+          meetingUrl,
+          status: bot.status,
+          botName: bot.bot_name || 'Meeting Bot',
+          scheduledAt: new Date(bot.created_at),
+          startedAt: bot.started_at ? new Date(bot.started_at) : null,
+          endedAt: bot.ended_at ? new Date(bot.ended_at) : null,
+          recordingUrl: bot.recording_url || null,
+          transcriptUrl: bot.transcript_url || null,
+          config: {
+            recordAudio: bot.record_audio || true,
+            recordVideo: bot.record_video || false,
+            recordScreen: bot.record_screen || false,
+            transcriptionEnabled: true,
+            botName: bot.bot_name || 'Meeting Bot',
+            webhookUrl: bot.webhook_url || null,
+          },
+          metadata: {
+            meetingPlatform: detectMeetingPlatform(meetingUrl),
+            duration: bot.duration || null,
+            participantCount: bot.participant_count || null,
+            transcriptWordCount: bot.transcript_word_count || null,
+          },
+        };
+      });
+    } catch (apiError) {
+      console.log('Recall.ai API failed:', apiError);
+      // TODO: Fix real API instead of falling back to mock
+      throw apiError;
+    }
   } catch (error) {
     recallLogger.error('Failed to list meeting bots', error);
     throw new Error(
@@ -283,34 +324,41 @@ export async function listMeetingBots(
 export async function getMeetingTranscript(botId: string): Promise<MeetingTranscript> {
   try {
     // For development/demo - return mock transcript only if no API key
-    if (!RECALL_API_CONFIG.apiKey || RECALL_API_CONFIG.apiKey === 'your-recall-ai-api-key') {
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-return
-      return getMockTranscript(botId);
+    // if (!RECALL_API_CONFIG.apiKey || RECALL_API_CONFIG.apiKey === 'your-recall-ai-api-key') {
+    //   // eslint-disable-next-line @typescript-eslint/no-unsafe-return
+    //   return getMockTranscript(botId);
+    // }
+
+    // Try real API first, fall back to mock on error
+    try {
+      const response = await recallApiRequest<RecallTranscriptApi>(`/bot/${botId}/transcript/`);
+
+      return {
+        botId,
+        meetingId: response.meeting_id,
+        content: response.transcript,
+        speakers: response.speakers || [],
+        segments:
+          response.segments?.map(segment => ({
+            speaker: segment.speaker,
+            text: segment.text,
+            startTime: segment.start_time,
+            endTime: segment.end_time,
+            confidence: segment.confidence || 0.95,
+          })) || [],
+        summary: response.summary || null,
+        keyPoints: response.key_points || [],
+        actionItems: response.action_items || [],
+        duration: response.duration || 0,
+        wordCount: response.word_count || 0,
+        language: response.language || 'en',
+        createdAt: new Date(response.created_at),
+      };
+    } catch (apiError) {
+      console.log('Recall.ai transcript API failed:', apiError);
+      // TODO: Fix real API instead of falling back to mock
+      throw apiError;
     }
-
-    const response = await recallApiRequest<RecallTranscriptApi>(`/bots/${botId}/transcript`);
-
-    return {
-      botId,
-      meetingId: response.meeting_id,
-      content: response.transcript,
-      speakers: response.speakers || [],
-      segments:
-        response.segments?.map(segment => ({
-          speaker: segment.speaker,
-          text: segment.text,
-          startTime: segment.start_time,
-          endTime: segment.end_time,
-          confidence: segment.confidence || 0.95,
-        })) || [],
-      summary: response.summary || null,
-      keyPoints: response.key_points || [],
-      actionItems: response.action_items || [],
-      duration: response.duration || 0,
-      wordCount: response.word_count || 0,
-      language: response.language || 'en',
-      createdAt: new Date(response.created_at),
-    };
   } catch (error) {
     recallLogger.error('Failed to get meeting transcript', error);
     throw new Error(
@@ -327,18 +375,23 @@ export async function getMeetingTranscript(botId: string): Promise<MeetingTransc
  * Detects meeting platform from URL
  */
 function detectMeetingPlatform(
-  meetingUrl: string
+  meetingUrl: string | null | undefined
 ): 'zoom' | 'google-meet' | 'microsoft-teams' | 'webex' | 'other' {
-  if (meetingUrl.includes('zoom.us')) {
+  if (!meetingUrl || typeof meetingUrl !== 'string') {
+    return 'other';
+  }
+  
+  const url = meetingUrl.toLowerCase();
+  if (url.includes('zoom.us') || url.includes('zoom.com')) {
     return 'zoom';
   }
-  if (meetingUrl.includes('meet.google.com')) {
+  if (url.includes('meet.google.com') || url.includes('google.com/meet')) {
     return 'google-meet';
   }
-  if (meetingUrl.includes('teams.microsoft.com')) {
+  if (url.includes('teams.microsoft.com') || url.includes('teams.live.com')) {
     return 'microsoft-teams';
   }
-  if (meetingUrl.includes('webex.com')) {
+  if (url.includes('webex.com') || url.includes('cisco.com')) {
     return 'webex';
   }
   return 'other';

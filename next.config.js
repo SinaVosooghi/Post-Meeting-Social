@@ -6,6 +6,13 @@ const nextConfig = {
   typescript: {
     ignoreBuildErrors: true, // Skip TypeScript errors for 48-hour deployment
   },
+  images: {
+    domains: [
+      'lh3.googleusercontent.com', // Google profile images
+      'media.licdn.com', // LinkedIn profile images
+      'platform-lookaside.fbsbx.com', // Facebook profile images
+    ],
+  },
 };
 
 module.exports = nextConfig;
