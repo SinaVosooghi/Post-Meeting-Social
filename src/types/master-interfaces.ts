@@ -130,6 +130,96 @@ export interface FirmSettings {
 // ============================================================================
 
 /**
+ * Calendar event from Google Calendar API
+ */
+export interface CalendarEvent {
+  id: string;
+  summary: string;
+  description?: string;
+  start: {
+    dateTime: string;
+    timeZone: string;
+  };
+  end: {
+    dateTime: string;
+    timeZone: string;
+  };
+  attendees?: Array<{
+    email: string;
+    displayName?: string;
+    responseStatus: string;
+  }>;
+  location?: string;
+  meetingUrl?: string;
+  platform?: MeetingPlatform;
+  botScheduled?: boolean;
+  botId?: string;
+}
+
+/**
+ * Meeting with bot and content information
+ */
+export interface Meeting {
+  id: string;
+  summary: string;
+  description?: string;
+  start: {
+    dateTime: string;
+    timeZone: string;
+  };
+  end: {
+    dateTime: string;
+    timeZone: string;
+  };
+  attendees?: Array<{
+    email: string;
+    displayName?: string;
+    responseStatus: string;
+  }>;
+  location?: string;
+  meetingUrl?: string;
+  platform?: MeetingPlatform;
+  status: 'upcoming' | 'completed' | 'recording';
+  botId?: string;
+  transcriptUrl?: string;
+  recordingUrl?: string;
+  duration?: number;
+  participantCount?: number;
+  followUpEmail?: string;
+  socialPost?: GeneratedContent;
+}
+
+/**
+ * Social media connection status
+ */
+export interface SocialConnection {
+  platform: 'linkedin' | 'facebook';
+  connected: boolean;
+  username?: string;
+  lastSync?: string;
+}
+
+/**
+ * Bot configuration settings
+ */
+export interface BotSettings {
+  joinMinutesBefore: number;
+  autoSchedule: boolean;
+  maxConcurrentBots: number;
+}
+
+/**
+ * Follow-up email interface
+ */
+export interface FollowUpEmail {
+  subject: string;
+  content: string;
+  tone: ContentTone;
+  meetingId: string;
+  generatedAt: string;
+}
+
+/**
  * Enhanced client meeting with regulatory context and privacy controls
  * Maps to: Meeting Management + Compliance Layer in architecture
  */
