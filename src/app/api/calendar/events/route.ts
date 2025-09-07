@@ -1,104 +1,41 @@
 import { NextResponse } from 'next/server';
-import { auth } from '@/lib/auth';
+import { auth } from '@/lib/auth-wrapper';
+import type { Session } from 'next-auth';
+import { getUpcomingEvents } from '@/lib/google-calendar';
+import type { CalendarEvent } from '@/types/master-interfaces';
 
 export async function GET() {
   try {
-    const session = await auth();
-    if (!session?.user?.id) {
+    const session = (await auth()) as Session | null;
+    if (!session) {
       return NextResponse.json(
         { success: false, error: { message: 'Authentication required' } },
         { status: 401 }
       );
     }
 
-    // For demo purposes, return mock calendar events
-    const mockEvents = [
-      {
-        id: 'event-1',
-        summary: 'Client Portfolio Review - John Smith',
-        description:
-          'Quarterly portfolio review and investment strategy discussion. Zoom link: https://zoom.us/j/123456789',
-        start: {
-          dateTime: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(), // Tomorrow
-          timeZone: 'America/New_York',
-        },
-        end: {
-          dateTime: new Date(Date.now() + 24 * 60 * 60 * 1000 + 60 * 60 * 1000).toISOString(), // Tomorrow + 1 hour
-          timeZone: 'America/New_York',
-        },
-        attendees: [
-          {
-            email: 'advisor@example.com',
-            displayName: 'Financial Advisor',
-            responseStatus: 'accepted',
-          },
-          {
-            email: 'john.smith@example.com',
-            displayName: 'John Smith',
-            responseStatus: 'accepted',
-          },
-        ],
-        location: 'Zoom Meeting',
-      },
-      {
-        id: 'event-2',
-        summary: 'Investment Strategy Meeting - Sarah Johnson',
-        description:
-          'Discussing retirement planning and 401k optimization. Teams link: https://teams.microsoft.com/l/meetup-join/123456789',
-        start: {
-          dateTime: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString(), // Day after tomorrow
-          timeZone: 'America/New_York',
-        },
-        end: {
-          dateTime: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000 + 45 * 60 * 1000).toISOString(), // Day after tomorrow + 45 min
-          timeZone: 'America/New_York',
-        },
-        attendees: [
-          {
-            email: 'advisor@example.com',
-            displayName: 'Financial Advisor',
-            responseStatus: 'accepted',
-          },
-          {
-            email: 'sarah.johnson@example.com',
-            displayName: 'Sarah Johnson',
-            responseStatus: 'accepted',
-          },
-        ],
-        location: 'Microsoft Teams',
-      },
-      {
-        id: 'event-3',
-        summary: 'Market Update Call - Team Meeting',
-        description:
-          'Weekly market analysis and client communication strategy. Google Meet: https://meet.google.com/abc-defg-hij',
-        start: {
-          dateTime: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString(), // 3 days from now
-          timeZone: 'America/New_York',
-        },
-        end: {
-          dateTime: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000 + 30 * 60 * 1000).toISOString(), // 3 days from now + 30 min
-          timeZone: 'America/New_York',
-        },
-        attendees: [
-          {
-            email: 'advisor@example.com',
-            displayName: 'Financial Advisor',
-            responseStatus: 'accepted',
-          },
-          { email: 'team@example.com', displayName: 'Team Members', responseStatus: 'accepted' },
-        ],
-        location: 'Google Meet',
-      },
-    ];
+    // Check if user has Google access token
+    if (!session.accessToken) {
+      return NextResponse.json(
+        { success: false, error: { message: 'Google Calendar not connected. Please sign in with Google.' } },
+        { status: 401 }
+      );
+    }
+
+    // Fetch real Google Calendar events
+    console.log('Fetching real Google Calendar events...');
+    const events = await getUpcomingEvents(session.accessToken, {
+      maxResults: 20,
+      timeMin: new Date(),
+    });
 
     return NextResponse.json({
       success: true,
-      data: mockEvents,
+      data: events,
       metadata: {
         timestamp: new Date().toISOString(),
         requestId: crypto.randomUUID(),
-        totalEvents: mockEvents.length,
+        totalEvents: events.length,
       },
     });
   } catch (error) {

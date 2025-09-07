@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Navigation } from '@/components/navigation';
 import type { Meeting, ApiResponse, GeneratedContent } from '@/types/master-interfaces';
 import { MeetingPlatform, isGeneratedContent } from '@/types/master-interfaces';
 
@@ -181,193 +182,198 @@ export default function MeetingsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 py-12 px-4">
-      <div className="max-w-6xl mx-auto">
-        <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold text-gray-900 mb-4">📋 Meeting Management</h1>
-          <p className="text-lg text-gray-600">
-            View past meetings, transcripts, and generate content
-          </p>
-        </div>
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
+      <Navigation />
+      <div className="py-12 px-4">
+        <div className="max-w-6xl mx-auto">
+          <div className="text-center mb-8">
+            <h1 className="text-4xl font-bold text-gray-900 mb-4">📋 Meeting Management</h1>
+            <p className="text-lg text-gray-600">
+              View past meetings, transcripts, and generate content
+            </p>
+          </div>
 
-        <div className="mb-6">
-          <Button
-            onClick={() => void fetchMeetings()}
-            disabled={isLoading}
-            className="w-full sm:w-auto"
-          >
-            {isLoading ? 'Loading...' : 'Refresh Meetings'}
-          </Button>
-        </div>
+          <div className="mb-6">
+            <Button
+              onClick={() => void fetchMeetings()}
+              disabled={isLoading}
+              className="w-full sm:w-auto"
+            >
+              {isLoading ? 'Loading...' : 'Refresh Meetings'}
+            </Button>
+          </div>
 
-        {error && (
-          <Card className="p-6 border-red-200 bg-red-50 mb-6">
-            <h3 className="font-semibold text-red-800 mb-2">Error</h3>
-            <p className="text-red-700">{error}</p>
-          </Card>
-        )}
+          {error && (
+            <Card className="p-6 border-red-200 bg-red-50 mb-6">
+              <h3 className="font-semibold text-red-800 mb-2">Error</h3>
+              <p className="text-red-700">{error}</p>
+            </Card>
+          )}
 
-        <Tabs defaultValue="meetings" className="w-full">
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="meetings">All Meetings</TabsTrigger>
-            <TabsTrigger value="details">Meeting Details</TabsTrigger>
-          </TabsList>
+          <Tabs defaultValue="meetings" className="w-full">
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="meetings">All Meetings</TabsTrigger>
+              <TabsTrigger value="details">Meeting Details</TabsTrigger>
+            </TabsList>
 
-          <TabsContent value="meetings" className="space-y-4">
-            <div className="grid gap-4">
-              {meetings.map(meeting => (
-                <Card key={meeting.id} className="p-6">
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-3 mb-2">
-                        <h3 className="text-lg font-semibold">{meeting.summary}</h3>
-                        <Badge className={getStatusColor(meeting.status)}>{meeting.status}</Badge>
-                        <Badge variant="outline">
-                          {getPlatformIcon(meeting.platform || MeetingPlatform.OTHER)}{' '}
-                          {meeting.platform}
-                        </Badge>
+            <TabsContent value="meetings" className="space-y-4">
+              <div className="grid gap-4">
+                {meetings.map(meeting => (
+                  <Card key={meeting.id} className="p-6">
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-3 mb-2">
+                          <h3 className="text-lg font-semibold">{meeting.summary}</h3>
+                          <Badge className={getStatusColor(meeting.status)}>{meeting.status}</Badge>
+                          <Badge variant="outline">
+                            {getPlatformIcon(meeting.platform || MeetingPlatform.OTHER)}{' '}
+                            {meeting.platform}
+                          </Badge>
+                        </div>
+
+                        <p className="text-gray-600 mb-2">
+                          {new Date(meeting.start.dateTime).toLocaleString()}
+                        </p>
+
+                        {meeting.attendees && meeting.attendees.length > 0 && (
+                          <div className="mb-2">
+                            <p className="text-sm text-gray-600">
+                              Attendees:{' '}
+                              {meeting.attendees.map(a => a.displayName || a.email).join(', ')}
+                            </p>
+                          </div>
+                        )}
+
+                        {meeting.duration && (
+                          <p className="text-sm text-gray-600 mb-2">
+                            Duration: {Math.floor(meeting.duration / 60)} minutes
+                          </p>
+                        )}
                       </div>
 
-                      <p className="text-gray-600 mb-2">
-                        {new Date(meeting.start.dateTime).toLocaleString()}
-                      </p>
-
-                      {meeting.attendees && meeting.attendees.length > 0 && (
-                        <div className="mb-2">
-                          <p className="text-sm text-gray-600">
-                            Attendees:{' '}
-                            {meeting.attendees.map(a => a.displayName || a.email).join(', ')}
-                          </p>
-                        </div>
-                      )}
-
-                      {meeting.duration && (
-                        <p className="text-sm text-gray-600 mb-2">
-                          Duration: {Math.floor(meeting.duration / 60)} minutes
-                        </p>
-                      )}
-                    </div>
-
-                    <div className="flex flex-col gap-2">
-                      <Button onClick={() => setSelectedMeeting(meeting)} size="sm">
-                        View Details
-                      </Button>
-                      {meeting.status === 'completed' && (
-                        <Button
-                          onClick={() => void generateFollowUpEmail(meeting.id)}
-                          variant="outline"
-                          size="sm"
-                        >
-                          Generate Email
+                      <div className="flex flex-col gap-2">
+                        <Button onClick={() => setSelectedMeeting(meeting)} size="sm">
+                          View Details
                         </Button>
-                      )}
+                        {meeting.status === 'completed' && (
+                          <Button
+                            onClick={() => void generateFollowUpEmail(meeting.id)}
+                            variant="outline"
+                            size="sm"
+                          >
+                            Generate Email
+                          </Button>
+                        )}
+                      </div>
                     </div>
-                  </div>
+                  </Card>
+                ))}
+              </div>
+
+              {meetings.length === 0 && !isLoading && (
+                <Card className="p-8 text-center">
+                  <h3 className="text-lg font-semibold text-gray-800 mb-2">No Meetings Found</h3>
+                  <p className="text-gray-600">
+                    Schedule some meetings with bots to see them here.
+                  </p>
                 </Card>
-              ))}
-            </div>
+              )}
+            </TabsContent>
 
-            {meetings.length === 0 && !isLoading && (
-              <Card className="p-8 text-center">
-                <h3 className="text-lg font-semibold text-gray-800 mb-2">No Meetings Found</h3>
-                <p className="text-gray-600">Schedule some meetings with bots to see them here.</p>
-              </Card>
-            )}
-          </TabsContent>
+            <TabsContent value="details" className="space-y-4">
+              {selectedMeeting ? (
+                <Card className="p-6">
+                  <h2 className="text-2xl font-bold mb-4">{selectedMeeting.summary}</h2>
 
-          <TabsContent value="details" className="space-y-4">
-            {selectedMeeting ? (
-              <Card className="p-6">
-                <h2 className="text-2xl font-bold mb-4">{selectedMeeting.summary}</h2>
-
-                <div className="grid md:grid-cols-2 gap-6">
-                  <div>
-                    <h3 className="text-lg font-semibold mb-2">Meeting Details</h3>
-                    <div className="space-y-2 text-sm">
-                      <p>
-                        <strong>Start:</strong>{' '}
-                        {new Date(selectedMeeting.start.dateTime).toLocaleString()}
-                      </p>
-                      <p>
-                        <strong>End:</strong>{' '}
-                        {new Date(selectedMeeting.end.dateTime).toLocaleString()}
-                      </p>
-                      <p>
-                        <strong>Platform:</strong> {selectedMeeting.platform}
-                      </p>
-                      <p>
-                        <strong>Status:</strong> {selectedMeeting.status}
-                      </p>
-                      {selectedMeeting.duration && (
+                  <div className="grid md:grid-cols-2 gap-6">
+                    <div>
+                      <h3 className="text-lg font-semibold mb-2">Meeting Details</h3>
+                      <div className="space-y-2 text-sm">
                         <p>
-                          <strong>Duration:</strong> {Math.floor(selectedMeeting.duration / 60)}{' '}
-                          minutes
+                          <strong>Start:</strong>{' '}
+                          {new Date(selectedMeeting.start.dateTime).toLocaleString()}
                         </p>
-                      )}
+                        <p>
+                          <strong>End:</strong>{' '}
+                          {new Date(selectedMeeting.end.dateTime).toLocaleString()}
+                        </p>
+                        <p>
+                          <strong>Platform:</strong> {selectedMeeting.platform}
+                        </p>
+                        <p>
+                          <strong>Status:</strong> {selectedMeeting.status}
+                        </p>
+                        {selectedMeeting.duration && (
+                          <p>
+                            <strong>Duration:</strong> {Math.floor(selectedMeeting.duration / 60)}{' '}
+                            minutes
+                          </p>
+                        )}
+                      </div>
                     </div>
-                  </div>
 
-                  <div>
-                    <h3 className="text-lg font-semibold mb-2">Actions</h3>
-                    <div className="space-y-2">
-                      <Button
-                        onClick={() => void generateFollowUpEmail(selectedMeeting.id)}
-                        className="w-full"
-                      >
-                        Generate Follow-up Email
-                      </Button>
-                      <Button
-                        onClick={() => void generateSocialPost(selectedMeeting.id)}
-                        variant="outline"
-                        className="w-full"
-                      >
-                        Generate Social Post
-                      </Button>
-                      {selectedMeeting.transcriptUrl && (
+                    <div>
+                      <h3 className="text-lg font-semibold mb-2">Actions</h3>
+                      <div className="space-y-2">
                         <Button
-                          onClick={() => window.open(selectedMeeting.transcriptUrl, '_blank')}
+                          onClick={() => void generateFollowUpEmail(selectedMeeting.id)}
+                          className="w-full"
+                        >
+                          Generate Follow-up Email
+                        </Button>
+                        <Button
+                          onClick={() => void generateSocialPost(selectedMeeting.id)}
                           variant="outline"
                           className="w-full"
                         >
-                          View Transcript
+                          Generate Social Post
                         </Button>
-                      )}
+                        {selectedMeeting.transcriptUrl && (
+                          <Button
+                            onClick={() => window.open(selectedMeeting.transcriptUrl, '_blank')}
+                            variant="outline"
+                            className="w-full"
+                          >
+                            View Transcript
+                          </Button>
+                        )}
+                      </div>
                     </div>
                   </div>
-                </div>
 
-                {selectedMeeting.followUpEmail && (
-                  <div className="mt-6">
-                    <h3 className="text-lg font-semibold mb-2">Generated Follow-up Email</h3>
-                    <div className="bg-gray-50 p-4 rounded-lg">
-                      <pre className="whitespace-pre-wrap text-sm">
-                        {selectedMeeting.followUpEmail}
-                      </pre>
+                  {selectedMeeting.followUpEmail && (
+                    <div className="mt-6">
+                      <h3 className="text-lg font-semibold mb-2">Generated Follow-up Email</h3>
+                      <div className="bg-gray-50 p-4 rounded-lg">
+                        <pre className="whitespace-pre-wrap text-sm">
+                          {selectedMeeting.followUpEmail}
+                        </pre>
+                      </div>
                     </div>
-                  </div>
-                )}
+                  )}
 
-                {selectedMeeting.socialPost && (
-                  <div className="mt-6">
-                    <h3 className="text-lg font-semibold mb-2">Generated Social Post</h3>
-                    <div className="bg-gray-50 p-4 rounded-lg">
-                      <pre className="whitespace-pre-wrap text-sm">
-                        {selectedMeeting.socialPost.content}
-                      </pre>
+                  {selectedMeeting.socialPost && (
+                    <div className="mt-6">
+                      <h3 className="text-lg font-semibold mb-2">Generated Social Post</h3>
+                      <div className="bg-gray-50 p-4 rounded-lg">
+                        <pre className="whitespace-pre-wrap text-sm">
+                          {selectedMeeting.socialPost.content}
+                        </pre>
+                      </div>
                     </div>
-                  </div>
-                )}
-              </Card>
-            ) : (
-              <Card className="p-8 text-center">
-                <h3 className="text-lg font-semibold text-gray-800 mb-2">Select a Meeting</h3>
-                <p className="text-gray-600">
-                  Choose a meeting from the list to view its details and generate content.
-                </p>
-              </Card>
-            )}
-          </TabsContent>
-        </Tabs>
+                  )}
+                </Card>
+              ) : (
+                <Card className="p-8 text-center">
+                  <h3 className="text-lg font-semibold text-gray-800 mb-2">Select a Meeting</h3>
+                  <p className="text-gray-600">
+                    Choose a meeting from the list to view its details and generate content.
+                  </p>
+                </Card>
+              )}
+            </TabsContent>
+          </Tabs>
+        </div>
       </div>
     </div>
   );
