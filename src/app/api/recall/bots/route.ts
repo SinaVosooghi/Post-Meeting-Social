@@ -1,9 +1,11 @@
 import { NextResponse } from 'next/server';
-import { auth } from '@/lib/auth';
+import { auth } from '@/lib/auth-wrapper';
+import type { Session } from 'next-auth';
 
 export async function POST(request: Request) {
   try {
-    const session = await auth();
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-call
+    const session = (await auth()) as Session | null;
     if (!session?.user?.id) {
       return NextResponse.json(
         { success: false, error: { message: 'Authentication required' } },
@@ -53,14 +55,19 @@ export async function POST(request: Request) {
 
 export async function GET() {
   try {
+    console.log('Recall.ai API called');
     const session = await auth();
-    if (!session?.user?.id) {
+    console.log('Session:', session);
+    
+    if (!session) {
+      console.log('No session, returning 401');
       return NextResponse.json(
         { success: false, error: { message: 'Authentication required' } },
         { status: 401 }
       );
     }
 
+    console.log('Session found, returning mock data');
     // For demo purposes, return mock bot statuses
     const mockBots = [
       {

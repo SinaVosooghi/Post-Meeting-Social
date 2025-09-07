@@ -9,7 +9,37 @@ declare module 'next-auth' {
       image?: string;
     };
     accessToken?: string;
+    refreshToken?: string;
+    expiresAt?: number;
     error?: string;
+    providerTokens?: {
+      google: {
+        accessToken?: string;
+        refreshToken?: string;
+        expiresAt?: number;
+        connected: boolean;
+      };
+      linkedin: {
+        accessToken?: string;
+        refreshToken?: string;
+        expiresAt?: number;
+        connected: boolean;
+      };
+    };
+  }
+}
+
+declare module 'next-auth/jwt' {
+  interface JWT {
+    accessToken?: string;
+    refreshToken?: string;
+    expiresAt?: number;
+    googleAccessToken?: string;
+    googleRefreshToken?: string;
+    googleExpiresAt?: number;
+    linkedinAccessToken?: string;
+    linkedinRefreshToken?: string;
+    linkedinExpiresAt?: number;
   }
 }
 

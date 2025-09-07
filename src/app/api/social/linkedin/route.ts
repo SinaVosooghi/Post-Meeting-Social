@@ -8,11 +8,13 @@
 
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
-import { auth } from '@/lib/auth';
+import { auth } from '@/lib/auth-wrapper';
+import type { Session } from 'next-auth';
 import {
   generateLinkedInAuthUrl,
   exchangeLinkedInCode,
   getLinkedInProfile,
+  postToLinkedIn,
   optimizeContentForLinkedIn,
   validateLinkedInContent,
   createMockLinkedInPost,
@@ -91,8 +93,9 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     // Check authentication
-    const session = await auth();
-    if (!session?.user?.id) {
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-call
+    const session = (await auth()) as Session | null;
+    if (!session?.user?.email) {
       return NextResponse.json(
         {
           success: false,
@@ -117,7 +120,7 @@ export async function POST(request: NextRequest) {
 
     switch (action) {
       case 'publish': {
-        return await handlePublishPost(params, session.user.id);
+        return await handlePublishPost(params, session.user.email);
       }
 
       case 'validate': {
@@ -315,7 +318,7 @@ async function handlePublishPost(
       {
         success: false,
         error: {
-          message: 'Content validation failed',
+          message: `Content validation failed: ${validation.issues.join(', ')}`,
           code: 'CONTENT_VALIDATION_FAILED',
           details: validation.issues,
           riskScore: validation.riskScore,
@@ -368,7 +371,9 @@ async function handlePublishPost(
   // Real LinkedIn posting
   try {
     // Get stored LinkedIn access token for user
-    const accessToken = await getSocialToken(userId, 'LINKEDIN');
+    const { getLinkedInToken } = await import('@/lib/persistent-token-store');
+    const linkedinToken = await getLinkedInToken(userId);
+    const accessToken = linkedinToken?.accessToken;
 
     if (!accessToken) {
       return NextResponse.json(
@@ -384,18 +389,11 @@ async function handlePublishPost(
       );
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-call
-    const postResult = (await postToLinkedIn(accessToken, {
+    const postResult = await postToLinkedIn(accessToken, {
       text: optimized.optimizedText,
       hashtags: optimized.hashtags,
       linkUrl: params.linkUrl,
-    })) as {
-      success: boolean;
-      postId?: string;
-      postUrl?: string;
-      publishedAt?: string;
-      error?: string;
-    };
+    });
 
     rateLimiter.recordRequest(userId);
 

@@ -11,6 +11,7 @@ import { auth } from '@/lib/auth';
 import { storeSocialToken, hasValidToken } from '@/lib/social-tokens';
 import { SocialPlatform } from '@/types/master-interfaces';
 import { calendarLogger } from '@/lib/logger';
+import type { Session } from 'next-auth';
 
 // ============================================================================
 // API ROUTE HANDLERS
@@ -22,7 +23,8 @@ export async function GET(request: NextRequest) {
     const action = searchParams.get('action');
 
     // Check authentication
-    const session = await auth();
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-call
+    const session = (await auth()) as Session | null;
     if (!session?.user?.id) {
       return NextResponse.json(
         {
@@ -164,7 +166,8 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     // Check authentication
-    const session = await auth();
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-call
+    const session = (await auth()) as Session | null;
     if (!session?.user?.id) {
       return NextResponse.json(
         {
