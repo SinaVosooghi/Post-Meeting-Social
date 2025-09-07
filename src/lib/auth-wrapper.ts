@@ -5,26 +5,44 @@
  * TypeScript module resolution issues in Yarn PnP environments.
  */
 
+import 'server-only';
 import NextAuth from 'next-auth';
 import { getServerSession } from 'next-auth';
 import { authLogger } from './logger';
 
-// Runtime imports with type assertions
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-const GoogleProvider = require('next-auth/providers/google').default;
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-const LinkedInProvider = require('next-auth/providers/linkedin').default;
-
-// Environment variables with proper typing
-const googleClientId = process.env.GOOGLE_CLIENT_ID as string;
-const googleClientSecret = process.env.GOOGLE_CLIENT_SECRET as string;
-const linkedinClientId = process.env.LINKEDIN_CLIENT_ID as string;
-const linkedinClientSecret = process.env.LINKEDIN_CLIENT_SECRET as string;
+import GoogleProvider from 'next-auth/providers/google';
+import LinkedInProvider from 'next-auth/providers/linkedin';
+import FacebookProvider from 'next-auth/providers/facebook';
 
 // Only log credential warnings on the server side
 if (typeof window === 'undefined') {
+  // Debug logging for environment variables
+  const googleClientId = process.env.GOOGLE_CLIENT_ID || process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
+  const googleClientSecret = process.env.GOOGLE_CLIENT_SECRET || process.env.NEXT_PUBLIC_GOOGLE_CLIENT_SECRET;
+  const linkedinClientId = process.env.LINKEDIN_CLIENT_ID || process.env.NEXT_PUBLIC_LINKEDIN_CLIENT_ID;
+  const linkedinClientSecret = process.env.LINKEDIN_CLIENT_SECRET || process.env.NEXT_PUBLIC_LINKEDIN_CLIENT_SECRET;
+
+  // Debug: Log the actual values (without exposing secrets)
+  console.log('🔍 Environment Variables Debug:', {
+    googleClientId: googleClientId ? 'SET' : 'NOT_SET',
+    googleClientSecret: googleClientSecret ? 'SET' : 'NOT_SET',
+    linkedinClientId: linkedinClientId ? 'SET' : 'NOT_SET',
+    linkedinClientSecret: linkedinClientSecret ? 'SET' : 'NOT_SET',
+    nextAuthUrl: process.env.NEXTAUTH_URL,
+    nextAuthSecret: process.env.NEXTAUTH_SECRET ? 'SET' : 'NOT_SET',
+  });
+
+  authLogger.debug('Environment variables check:', {
+    googleClientId: googleClientId ? 'SET' : 'NOT_SET',
+    googleClientSecret: googleClientSecret ? 'SET' : 'NOT_SET',
+    linkedinClientId: linkedinClientId ? 'SET' : 'NOT_SET',
+    linkedinClientSecret: linkedinClientSecret ? 'SET' : 'NOT_SET',
+  });
+
   if (!googleClientId || !googleClientSecret) {
     authLogger.warn('Missing Google OAuth credentials. Google sign-in will be disabled.');
+  } else {
+    authLogger.info('Google OAuth credentials found. Configuring Google provider.');
   }
 
   if (!linkedinClientId || !linkedinClientSecret) {
@@ -109,69 +127,159 @@ const redirectCallback = async ({ url, baseUrl }: { url: string; baseUrl: string
     return `${baseUrl}/demo`;
   }
   
-  // Redirect to demo page after successful login
+  // Redirect to home page after successful login
   if (url.startsWith('/')) {
     return `${baseUrl}${url}`;
   } else if (new URL(url).origin === baseUrl) {
     return url;
   }
-  return `${baseUrl}/demo`;
+  return `${baseUrl}/`;
 };
 
-// Type-safe auth configuration
-export const authConfig = {
-  providers: [
-    // Only Google for primary authentication
-    ...(googleClientId && googleClientSecret
-      ? [
-          GoogleProvider({
-            clientId: googleClientId,
-            clientSecret: googleClientSecret,
-            authorization: {
-              params: {
-                scope:
-                  'openid email profile https://www.googleapis.com/auth/calendar.readonly https://www.googleapis.com/auth/calendar.events',
-                access_type: 'offline',
-                prompt: 'consent',
-              },
-            },
-          }),
-        ]
-      : []),
-    // LinkedIn will be handled separately as a "Connect Account" feature
-  ],
-  callbacks: {
-    jwt: jwtCallback,
-    session: sessionCallback,
-    redirect: redirectCallback,
-  },
-  pages: {
-    signIn: '/auth/signin',
-    error: '/auth/error',
-  },
-  session: {
-    strategy: 'jwt' as const,
-    maxAge: 30 * 24 * 60 * 60, // 30 days
-  },
-  jwt: {
-    maxAge: 30 * 24 * 60 * 60, // 30 days
-  },
-  debug: process.env.NODE_ENV === 'development',
-  logger: {
-    error(code: any, metadata: any) {
-      authLogger.error(`NextAuth error: ${code}`, metadata);
+// Type-safe auth configuration function
+function getAuthConfig() {
+  // Force load environment variables
+  const googleClientId = process.env.GOOGLE_CLIENT_ID;
+  const googleClientSecret = process.env.GOOGLE_CLIENT_SECRET;
+  const linkedinClientId = process.env.LINKEDIN_CLIENT_ID;
+  const linkedinClientSecret = process.env.LINKEDIN_CLIENT_SECRET;
+  const facebookClientId = process.env.FACEBOOK_CLIENT_ID;
+  const facebookClientSecret = process.env.FACEBOOK_CLIENT_SECRET;
+
+  console.log('🔍 Raw Environment Variables:', {
+    GOOGLE_CLIENT_ID: googleClientId || 'NOT_SET',
+    GOOGLE_CLIENT_SECRET: googleClientSecret ? 'SET' : 'NOT_SET',
+    NEXTAUTH_URL: process.env.NEXTAUTH_URL || 'NOT_SET',
+    NEXTAUTH_SECRET: process.env.NEXTAUTH_SECRET ? 'SET' : 'NOT_SET',
+  });
+
+  if (!googleClientId || !googleClientSecret) {
+    console.error('❌ Missing Google OAuth credentials!');
+    return {
+      providers: [],
+      callbacks: {},
+      pages: { signIn: '/auth/signin', error: '/auth/error' },
+      debug: true,
+    };
+  }
+
+  const providers = [];
+
+  console.log('🔍 Before Google Provider Check:', {
+    googleClientId: googleClientId ? 'EXISTS' : 'NULL',
+    googleClientSecret: googleClientSecret ? 'EXISTS' : 'NULL',
+    googleClientIdLength: googleClientId?.length || 0,
+    googleClientSecretLength: googleClientSecret?.length || 0,
+  });
+
+  if (googleClientId && googleClientSecret) {
+    console.log('🔍 Creating Google Provider with:', {
+      clientId: googleClientId.substring(0, 20) + '...',
+      clientSecret: googleClientSecret.substring(0, 10) + '...',
+    });
+    
+    const googleProvider = GoogleProvider({
+      clientId: googleClientId as string,
+      clientSecret: googleClientSecret as string,
+      authorization: {
+        params: {
+          scope:
+            'openid email profile https://www.googleapis.com/auth/calendar.readonly https://www.googleapis.com/auth/calendar.events',
+          access_type: 'offline',
+          prompt: 'consent',
+        },
+      },
+    });
+
+    console.log('🔍 Google Provider Created:', {
+      id: googleProvider.id,
+      name: googleProvider.name,
+      hasClientId: !!googleProvider.clientId,
+      hasClientSecret: !!googleProvider.clientSecret,
+    });
+
+    providers.push(googleProvider);
+  } else {
+    console.log('❌ Google Provider NOT Created - Missing credentials');
+  }
+
+  if (linkedinClientId && linkedinClientSecret) {
+    providers.push(
+      LinkedInProvider({
+        clientId: linkedinClientId,
+        clientSecret: linkedinClientSecret,
+        authorization: {
+          params: {
+            scope: 'openid profile email w_member_social',
+          },
+        },
+      })
+    );
+  }
+
+  if (facebookClientId && facebookClientSecret) {
+    providers.push(
+      FacebookProvider({
+        clientId: facebookClientId,
+        clientSecret: facebookClientSecret,
+        authorization: {
+          params: {
+            scope: 'public_profile email pages_manage_posts pages_read_engagement',
+          },
+        },
+      })
+    );
+  }
+
+  console.log('🔍 Providers Created:', providers.length);
+
+  return {
+    providers,
+    callbacks: {
+      jwt: jwtCallback,
+      session: sessionCallback,
+      redirect: redirectCallback,
     },
-    warn(code: any) {
-      authLogger.warn(`NextAuth warning: ${code}`);
+    pages: {
+      signIn: '/auth/signin',
+      error: '/auth/error',
     },
-    debug(code: any, metadata: any) {
-      authLogger.debug(`NextAuth debug: ${code}`, metadata);
+    session: {
+      strategy: 'jwt' as const,
+      maxAge: 30 * 24 * 60 * 60, // 30 days
     },
-  },
-};
+    jwt: {
+      maxAge: 30 * 24 * 60 * 60, // 30 days
+    },
+    debug: process.env.NODE_ENV === 'development',
+    logger: {
+      error(code: any, metadata: any) {
+        authLogger.error(`NextAuth error: ${code}`, metadata);
+      },
+      warn(code: any) {
+        authLogger.warn(`NextAuth warning: ${code}`);
+      },
+      debug(code: any, metadata: any) {
+        authLogger.debug(`NextAuth debug: ${code}`, metadata);
+      },
+    },
+  };
+}
+
+// Force fresh configuration every time (no caching)
+export function getAuthConfigLazy() {
+  return getAuthConfig();
+}
+
+export function getNextAuthInstance() {
+  return NextAuth(getAuthConfigLazy());
+}
+
+// Export the configuration (for backward compatibility)
+export const authConfig = getAuthConfig();
 
 // Export the NextAuth instance with proper typing
-const nextAuthInstance = NextAuth(authConfig);
+const nextAuthInstance = getNextAuthInstance();
 export default nextAuthInstance;
 
 // Export individual functions for easier importing

@@ -78,8 +78,10 @@ export default function HomePage() {
     actionItems: string[];
     nextSteps: string;
   } | null>(null);
+  const [emailKey, setEmailKey] = useState(0);
   const [activeTab, setActiveTab] = useState<'posts' | 'email'>('posts');
   const [error, setError] = useState<string | null>(null);
+
 
   // Handle post generation
   const handleGeneratePosts = async () => {
@@ -172,6 +174,7 @@ export default function HomePage() {
 
       if (result.success && result.data) {
         setGeneratedEmail(result.data);
+        setEmailKey(prev => prev + 1);
       } else {
         throw new Error(result.error?.message || 'Failed to generate email');
       }
@@ -185,13 +188,37 @@ export default function HomePage() {
   };
 
   // Handle copy to clipboard
-  const handleCopyToClipboard = async (text: string) => {
+  const handleCopyToClipboard = async (
+    text: string,
+    event?: React.MouseEvent<HTMLButtonElement>
+  ) => {
     try {
       await navigator.clipboard.writeText(text);
-      // You could add a toast notification here
+      // Show brief success feedback
+      const button = event?.currentTarget as HTMLButtonElement;
+      const originalText = button?.textContent;
+      if (button) {
+        button.textContent = '✅ Copied!';
+        button.style.color = '#10b981';
+        setTimeout(() => {
+          button.textContent = originalText;
+          button.style.color = '';
+        }, 2000);
+      }
       logger.info('Content copied to clipboard', { success: true });
     } catch (err) {
       logger.error('Failed to copy to clipboard', ensureError(err));
+      // Show error feedback
+      const button = event?.currentTarget as HTMLButtonElement;
+      const originalText = button?.textContent;
+      if (button) {
+        button.textContent = '❌ Failed';
+        button.style.color = '#ef4444';
+        setTimeout(() => {
+          button.textContent = originalText;
+          button.style.color = '';
+        }, 2000);
+      }
     }
   };
 
@@ -383,8 +410,8 @@ export default function HomePage() {
                                 </span>
                               </div>
                               <button
-                                onClick={() => {
-                                  void handleCopyToClipboard(post.content);
+                                onClick={e => {
+                                  void handleCopyToClipboard(post.content, e);
                                 }}
                                 className="text-sm text-blue-600 hover:text-blue-700 font-medium"
                               >
@@ -427,8 +454,8 @@ export default function HomePage() {
 
               {/* Email Tab */}
               {activeTab === 'email' && (
-                <div>
-                  {generatedEmail ? (
+                <div key={emailKey}>
+                  {generatedEmail && generatedEmail.subject ? (
                     <div className="space-y-4">
                       <div className="flex items-center justify-between">
                         <span className="text-sm text-gray-500">Generated follow-up email</span>

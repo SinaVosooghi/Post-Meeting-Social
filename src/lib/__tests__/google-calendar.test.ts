@@ -24,20 +24,18 @@ import {
 // Mock googleapis
 jest.mock('googleapis', () => ({
   google: {
-    calendar: {
-      calendar: jest.fn(() => ({
-        events: {
-          list: jest.fn(),
-          insert: jest.fn(),
-          update: jest.fn(),
-          patch: jest.fn(),
-          delete: jest.fn(),
-        },
-        calendarList: {
-          list: jest.fn(),
-        },
-      })),
-    },
+    calendar: jest.fn(() => ({
+      events: {
+        list: jest.fn(),
+        insert: jest.fn(),
+        update: jest.fn(),
+        patch: jest.fn(),
+        delete: jest.fn(),
+      },
+      calendarList: {
+        list: jest.fn(),
+      },
+    })),
     auth: {
       OAuth2: jest.fn().mockImplementation(() => ({
         setCredentials: jest.fn(),
@@ -108,7 +106,7 @@ describe('Google Calendar Integration', () => {
           list: jest.fn().mockResolvedValue(mockEvents),
         },
       };
-      google.calendar.calendar.mockReturnValue(mockCalendar);
+      google.calendar.mockReturnValue(mockCalendar);
 
       const result = await getUpcomingEvents('test-token');
 
@@ -132,7 +130,7 @@ describe('Google Calendar Integration', () => {
           list: jest.fn().mockResolvedValue(mockEvents),
         },
       };
-      google.calendar.calendar.mockReturnValue(mockCalendar);
+      google.calendar.mockReturnValue(mockCalendar);
 
       const result = await getUpcomingEvents('test-token');
 
@@ -146,7 +144,7 @@ describe('Google Calendar Integration', () => {
           list: jest.fn().mockRejectedValue(new Error('API error')),
         },
       };
-      google.calendar.calendar.mockReturnValue(mockCalendar);
+      google.calendar.mockReturnValue(mockCalendar);
 
       await expect(getUpcomingEvents('test-token')).rejects.toThrow(
         'Failed to fetch calendar events'
@@ -191,7 +189,7 @@ describe('Google Calendar Integration', () => {
           insert: jest.fn().mockResolvedValue(mockResponse),
         },
       };
-      google.calendar.calendar.mockReturnValue(mockCalendar);
+      google.calendar.mockReturnValue(mockCalendar);
 
       const result = await createCalendarEvent('test-token', eventData);
 
@@ -216,7 +214,7 @@ describe('Google Calendar Integration', () => {
           insert: jest.fn().mockRejectedValue(new Error('Invalid event data')),
         },
       };
-      google.calendar.calendar.mockReturnValue(mockCalendar);
+      google.calendar.mockReturnValue(mockCalendar);
 
       await expect(createCalendarEvent('test-token', eventData)).rejects.toThrow(
         'Failed to create calendar event'
@@ -261,7 +259,7 @@ describe('Google Calendar Integration', () => {
           patch: jest.fn().mockResolvedValue(mockResponse),
         },
       };
-      google.calendar.calendar.mockReturnValue(mockCalendar);
+      google.calendar.mockReturnValue(mockCalendar);
 
       const result = await updateCalendarEvent('test-token', 'event-123', updates);
 
@@ -282,7 +280,7 @@ describe('Google Calendar Integration', () => {
           patch: jest.fn().mockRejectedValue(new Error('Event not found')),
         },
       };
-      google.calendar.calendar.mockReturnValue(mockCalendar);
+      google.calendar.mockReturnValue(mockCalendar);
 
       await expect(updateCalendarEvent('test-token', 'nonexistent-event', updates)).rejects.toThrow(
         'Failed to update calendar event'
@@ -298,7 +296,7 @@ describe('Google Calendar Integration', () => {
           delete: jest.fn().mockResolvedValue({}),
         },
       };
-      google.calendar.calendar.mockReturnValue(mockCalendar);
+      google.calendar.mockReturnValue(mockCalendar);
 
       await expect(deleteCalendarEvent('test-token', 'event-123')).resolves.not.toThrow();
     });
@@ -310,7 +308,7 @@ describe('Google Calendar Integration', () => {
           delete: jest.fn().mockRejectedValue(new Error('Event not found')),
         },
       };
-      google.calendar.calendar.mockReturnValue(mockCalendar);
+      google.calendar.mockReturnValue(mockCalendar);
 
       await expect(deleteCalendarEvent('test-token', 'nonexistent-event')).rejects.toThrow(
         'Failed to delete calendar event'
@@ -326,7 +324,7 @@ describe('Google Calendar Integration', () => {
           list: jest.fn().mockResolvedValue({ status: 200 }),
         },
       };
-      google.calendar.calendar.mockReturnValue(mockCalendar);
+      google.calendar.mockReturnValue(mockCalendar);
 
       const result = await validateGoogleCalendarAccess('test-token');
 
@@ -340,7 +338,7 @@ describe('Google Calendar Integration', () => {
           list: jest.fn().mockRejectedValue(new Error('Invalid token')),
         },
       };
-      google.calendar.calendar.mockReturnValue(mockCalendar);
+      google.calendar.mockReturnValue(mockCalendar);
 
       const result = await validateGoogleCalendarAccess('invalid-token');
 
@@ -368,7 +366,7 @@ describe('Google Calendar Integration', () => {
           list: jest.fn().mockResolvedValue(mockCalendars),
         },
       };
-      google.calendar.calendar.mockReturnValue(mockCalendar);
+      google.calendar.mockReturnValue(mockCalendar);
 
       const result = await getUserCalendars('test-token');
 

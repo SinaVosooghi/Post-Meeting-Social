@@ -15,7 +15,7 @@ export default function CalendarPage() {
 
   const detectMeetingPlatform = (event: CalendarEvent): MeetingPlatform => {
     const text =
-      `${event.summary} ${event.description || ''} ${event.location || ''}`.toLowerCase();
+      `${event.title} ${event.description || ''} ${event.location || ''}`.toLowerCase();
 
     if (text.includes('zoom.us') || text.includes('zoom')) {
       return MeetingPlatform.ZOOM;
@@ -31,7 +31,13 @@ export default function CalendarPage() {
   };
 
   const extractMeetingUrl = (event: CalendarEvent): string | undefined => {
-    const text = `${event.summary} ${event.description || ''} ${event.location || ''}`;
+    // First check if meetingUrl is already provided by the API
+    if (event.meetingUrl) {
+      return event.meetingUrl;
+    }
+
+    // Fallback: extract from text fields
+    const text = `${event.title} ${event.description || ''} ${event.location || ''}`;
     const urlRegex = /(https?:\/\/[^\s]+)/g;
     const urls = text.match(urlRegex);
 
@@ -56,18 +62,27 @@ export default function CalendarPage() {
     setError(null);
 
     try {
-      const response = await fetch('/api/calendar/events');
-      const result = (await response.json()) as ApiResponse<CalendarEvent[]>;
+      // Fetch calendar events and bot status in parallel
+      const [eventsResponse, botStatusResponse] = await Promise.all([
+        fetch('/api/calendar/events'),
+        fetch('/api/recall/bots/status'),
+      ]);
 
-      if (result.success && result.data) {
-        const processedEvents = result.data.map(event => ({
+      const eventsResult = (await eventsResponse.json()) as ApiResponse<CalendarEvent[]>;
+      const botStatusResult = (await botStatusResponse.json()) as ApiResponse<Record<string, { botScheduled: boolean; botId: string | null; scheduledAt: string }>>;
+
+      if (eventsResult.success && eventsResult.data) {
+        const processedEvents = eventsResult.data.map(event => ({
           ...event,
           platform: detectMeetingPlatform(event),
           meetingUrl: extractMeetingUrl(event),
+          // Merge bot status from database
+          botScheduled: botStatusResult.success ? botStatusResult.data[event.id]?.botScheduled || false : false,
+          botId: botStatusResult.success ? botStatusResult.data[event.id]?.botId || undefined : undefined,
         }));
         setEvents(processedEvents);
       } else {
-        setError(result.error?.message || 'Failed to fetch calendar events');
+        setError(eventsResult.error?.message || 'Failed to fetch calendar events');
       }
     } catch (err) {
       setError('Network error occurred');
@@ -100,6 +115,9 @@ export default function CalendarPage() {
               : event
           )
         );
+        // Show success message
+        setError(null);
+        console.log('✅ Bot scheduled successfully:', result.data);
       } else {
         setError(result.error?.message || 'Failed to schedule bot');
       }
@@ -145,19 +163,20 @@ export default function CalendarPage() {
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
                     <div className="flex items-center gap-3 mb-2">
-                      <h3 className="text-lg font-semibold">{event.summary}</h3>
+                      <h3 className="text-lg font-semibold">{event.title}</h3>
                       <Badge variant="outline">{event.platform}</Badge>
                       {event.meetingUrl && <Badge variant="secondary">Has Meeting Link</Badge>}
+                      {event.botScheduled && <Badge variant="default">Bot Scheduled</Badge>}
                     </div>
 
                     <p className="text-gray-600 mb-2">
-                      {new Date(event.start.dateTime).toLocaleString()}
+                      {event.startTime ? event.startTime.toLocaleString() : 'No start time'}
                     </p>
 
                     {event.attendees && event.attendees.length > 0 && (
                       <div className="mb-2">
                         <p className="text-sm text-gray-600">
-                          Attendees: {event.attendees.map(a => a.displayName || a.email).join(', ')}
+                          Attendees: {event.attendees.map(a => a.name || a.email).join(', ')}
                         </p>
                       </div>
                     )}
@@ -174,10 +193,11 @@ export default function CalendarPage() {
                   <div className="flex flex-col gap-2">
                     <Button
                       onClick={() => void scheduleBot(event.id)}
-                      disabled={!event.meetingUrl}
+                      disabled={!extractMeetingUrl(event) || event.botScheduled}
                       size="sm"
+                      variant={event.botScheduled ? "secondary" : "default"}
                     >
-                      Schedule Bot
+                      {event.botScheduled ? `Bot Scheduled (${event.botId?.slice(-8)})` : 'Schedule Bot'}
                     </Button>
                     <Button variant="outline" size="sm">
                       View Details
