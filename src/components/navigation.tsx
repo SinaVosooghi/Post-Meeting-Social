@@ -36,28 +36,28 @@ export function Navigation() {
           {session && (
             <div className="hidden md:flex items-center space-x-8">
               <Link
-                href="/dashboard"
+                href="/demo"
                 className="text-gray-700 hover:text-blue-600 px-3 py-2 rounded-md text-sm font-medium transition-colors"
               >
-                📊 Dashboard
+                🎯 Demo
+              </Link>
+              <Link
+                href="/calendar"
+                className="text-gray-700 hover:text-blue-600 px-3 py-2 rounded-md text-sm font-medium transition-colors"
+              >
+                📅 Calendar
               </Link>
               <Link
                 href="/meetings"
                 className="text-gray-700 hover:text-blue-600 px-3 py-2 rounded-md text-sm font-medium transition-colors"
               >
-                📅 Meetings
-              </Link>
-              <Link
-                href="/automations"
-                className="text-gray-700 hover:text-blue-600 px-3 py-2 rounded-md text-sm font-medium transition-colors"
-              >
-                ⚙️ Automations
+                📋 Meetings
               </Link>
               <Link
                 href="/settings"
                 className="text-gray-700 hover:text-blue-600 px-3 py-2 rounded-md text-sm font-medium transition-colors"
               >
-                🔧 Settings
+                ⚙️ Settings
               </Link>
             </div>
           )}
@@ -156,28 +156,28 @@ export function Navigation() {
         <div className="md:hidden border-t border-gray-200">
           <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3">
             <Link
-              href="/dashboard"
+              href="/demo"
               className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50"
             >
-              📊 Dashboard
+              🎯 Demo
+            </Link>
+            <Link
+              href="/calendar"
+              className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50"
+            >
+              📅 Calendar
             </Link>
             <Link
               href="/meetings"
               className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50"
             >
-              📅 Meetings
-            </Link>
-            <Link
-              href="/automations"
-              className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50"
-            >
-              ⚙️ Automations
+              📋 Meetings
             </Link>
             <Link
               href="/settings"
               className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50"
             >
-              🔧 Settings
+              ⚙️ Settings
             </Link>
           </div>
         </div>

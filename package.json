@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint . --fix",
-    "lint:file": "eslint",
+    "lint:file": "eslint --fix",
     "lint:fix": "eslint . --fix",
     "type-check": "tsc --noEmit",
     "test": "jest",
