@@ -1,10 +1,5 @@
-/**
- * NextAuth.js API Route Handler
- * Post-Meeting Social Media Content Generator
- *
- * Handles OAuth authentication for Google Calendar, LinkedIn, and Facebook
- */
+import NextAuth from '@/lib/auth-wrapper';
 
-import { handlers } from '@/lib/auth';
+const handler = NextAuth;
 
-export const { GET, POST } = handlers;
+export { handler as GET, handler as POST };

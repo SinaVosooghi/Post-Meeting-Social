@@ -8,6 +8,7 @@
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
+import type { Session } from 'next-auth';
 import { socialLogger } from '@/lib/logger';
 import type { ContentApprovalRequest, ContentApprovalResponse } from '@/types/master-interfaces';
 
@@ -38,7 +39,8 @@ const mockContentStorage = new Map<
 export async function POST(request: NextRequest) {
   try {
     // Check authentication
-    const session = await auth();
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-call
+    const session = (await auth()) as Session | null;
     if (!session?.user?.id) {
       return NextResponse.json<ContentApprovalResponse>(
         {
@@ -260,7 +262,8 @@ export async function POST(request: NextRequest) {
 export async function GET(_request: NextRequest) {
   try {
     // Check authentication
-    const session = await auth();
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-call
+    const session = (await auth()) as Session | null;
     if (!session?.user?.id) {
       return NextResponse.json(
         {
