@@ -336,8 +336,8 @@ async function handlePublishPost(
     platform: 'linkedin',
   });
 
-  // Check if we have LinkedIn credentials for real publishing
-  const useMockData = !process.env.LINKEDIN_CLIENT_ID || !process.env.LINKEDIN_CLIENT_SECRET;
+  // Always use mock publishing for this project (auth is real, publishing is mocked)
+  const useMockData = true;
 
   if (useMockData) {
     const mockResult = await createMockLinkedInPost(optimized.optimizedText, optimized.hashtags);
@@ -364,6 +364,7 @@ async function handlePublishPost(
         timestamp: new Date().toISOString(),
         requestId: crypto.randomUUID(),
         usingMockData: true,
+        note: 'Publishing is mocked for this project - authentication is real',
       },
     });
   }
