@@ -63,7 +63,7 @@ test.describe('Authentication Flow Tests - Jump.ai Challenge', () => {
     await expect(page.locator('h1')).toContainText('Settings');
     await expect(page.locator('h2:has-text("Social Media Connections")')).toBeVisible();
     await expect(page.locator('h2:has-text("Bot Settings")')).toBeVisible();
-    await expect(page.locator('h3:has-text("linkedin")').first()).toBeVisible();
+    await expect(page.locator('h3:has-text("LinkedIn")').first()).toBeVisible();
     
     await page.screenshot({ path: 'tests/screenshots/10-settings-page.png', fullPage: true });
   });

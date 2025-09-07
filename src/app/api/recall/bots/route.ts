@@ -2,11 +2,14 @@ import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth-wrapper';
 import type { Session } from 'next-auth';
 
+// Simple in-memory storage for bot schedules
+const botSchedules = new Map<string, { botId: string; eventId: string; scheduledAt: Date; userId: string }>();
+
 export async function POST(request: Request) {
   try {
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-call
     const session = (await auth()) as Session | null;
-    if (!session?.user?.id) {
+
+    if (!session?.user?.email) {
       return NextResponse.json(
         { success: false, error: { message: 'Authentication required' } },
         { status: 401 }
@@ -16,11 +19,19 @@ export async function POST(request: Request) {
     const body = (await request.json()) as { eventId: string; joinMinutesBefore?: number };
     const { eventId, joinMinutesBefore = 5 } = body;
 
-    // For demo purposes, simulate bot scheduling
+    // Generate bot ID
     const botId = `bot-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
-    // Simulate API delay
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    // Store bot schedule in memory
+    const scheduleKey = `${session.user.email}-${eventId}`;
+    botSchedules.set(scheduleKey, {
+      botId,
+      eventId,
+      scheduledAt: new Date(),
+      userId: session.user.email,
+    });
+
+    console.log(`🤖 Bot scheduled: ${botId} for event: ${eventId}`);
 
     return NextResponse.json({
       success: true,
@@ -55,50 +66,35 @@ export async function POST(request: Request) {
 
 export async function GET() {
   try {
-    console.log('Recall.ai API called');
-    const session = await auth();
-    console.log('Session:', session);
+    const session = (await auth()) as Session | null;
     
-    if (!session) {
-      console.log('No session, returning 401');
+    if (!session?.user?.email) {
       return NextResponse.json(
         { success: false, error: { message: 'Authentication required' } },
         { status: 401 }
       );
     }
 
-    console.log('Session found, returning mock data');
-    // For demo purposes, return mock bot statuses
-    const mockBots = [
-      {
-        botId: 'bot-123456789',
-        eventId: 'event-1',
-        status: 'completed',
-        meetingUrl: 'https://zoom.us/j/123456789',
-        recordingUrl: 'https://storage.example.com/recording-123.mp4',
-        transcriptUrl: 'https://storage.example.com/transcript-123.txt',
-        startedAt: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(), // 2 hours ago
-        endedAt: new Date(Date.now() - 1 * 60 * 60 * 1000).toISOString(), // 1 hour ago
-        duration: 3600, // 1 hour in seconds
-        participantCount: 2,
-      },
-      {
-        botId: 'bot-987654321',
-        eventId: 'event-2',
-        status: 'recording',
-        meetingUrl: 'https://teams.microsoft.com/l/meetup-join/123456789',
-        startedAt: new Date(Date.now() - 30 * 60 * 1000).toISOString(), // 30 minutes ago
-        participantCount: 2,
-      },
-    ];
+    // Get bot schedules for this user
+    const userSchedules: Record<string, { botScheduled: boolean; botId: string | null; scheduledAt: Date }> = {};
+    
+    for (const [key, schedule] of botSchedules.entries()) {
+      if (schedule.userId === session.user.email) {
+        userSchedules[schedule.eventId] = {
+          botScheduled: true,
+          botId: schedule.botId,
+          scheduledAt: schedule.scheduledAt,
+        };
+      }
+    }
 
     return NextResponse.json({
       success: true,
-      data: mockBots,
+      data: userSchedules,
       metadata: {
         timestamp: new Date().toISOString(),
         requestId: crypto.randomUUID(),
-        totalBots: mockBots.length,
+        totalMeetings: Object.keys(userSchedules).length,
       },
     });
   } catch (error) {

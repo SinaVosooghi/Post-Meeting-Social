@@ -1752,6 +1752,8 @@ export interface CalendarEvent {
   readonly visibility: 'default' | 'public' | 'private';
   readonly createdAt: Date;
   readonly updatedAt: Date;
+  readonly botScheduled?: boolean;
+  readonly botId?: string;
 }
 
 /**

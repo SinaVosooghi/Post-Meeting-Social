@@ -23,6 +23,7 @@ jest.mock('@/lib/logger', () => ({
 
 describe('Recall.ai Integration', () => {
   const originalEnv = process.env;
+  const mockFetch = global.fetch as jest.MockedFunction<typeof fetch>;
 
   beforeEach(() => {
     process.env = {
@@ -30,6 +31,25 @@ describe('Recall.ai Integration', () => {
       RECALL_AI_API_KEY: 'test-recall-api-key',
       RECALL_AI_BASE_URL: 'https://api.recall.ai',
     };
+    
+    // Mock successful fetch responses by default
+    mockFetch.mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: jest.fn().mockResolvedValue({
+        id: 'test-bot-123',
+        status: 'scheduled',
+        meeting_url: 'https://zoom.us/j/123456789',
+        bot_name: 'Test Bot',
+        record_audio: true,
+        record_video: false,
+        record_screen: false,
+        transcription_enabled: true,
+        real_time_transcription: false,
+        webhook_url: 'https://example.com/webhook',
+        join_minutes_before: 5,
+      }),
+    } as any);
   });
 
   afterEach(() => {
@@ -98,6 +118,29 @@ describe('Recall.ai Integration', () => {
 
   describe('listMeetingBots', () => {
     it('should list meeting bots', async () => {
+      // Mock response for listMeetingBots
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: jest.fn().mockResolvedValue({
+          count: 2,
+          next: null,
+          previous: null,
+          results: [
+            {
+              id: 'bot-1',
+              status: 'scheduled',
+              meeting_url: 'https://zoom.us/j/123456789',
+            },
+            {
+              id: 'bot-2',
+              status: 'recording',
+              meeting_url: 'https://teams.microsoft.com/l/meetup-join/123',
+            },
+          ],
+        }),
+      } as any);
+
       const result = await listMeetingBots();
 
       expect(result).toBeDefined();
@@ -106,6 +149,18 @@ describe('Recall.ai Integration', () => {
     });
 
     it('should return empty array when no bots exist', async () => {
+      // Mock empty response for listMeetingBots
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: jest.fn().mockResolvedValue({
+          count: 0,
+          next: null,
+          previous: null,
+          results: [],
+        }),
+      } as any);
+
       const result = await listMeetingBots();
 
       expect(result).toHaveLength(0);
@@ -114,6 +169,35 @@ describe('Recall.ai Integration', () => {
 
   describe('getMeetingTranscript', () => {
     it('should get meeting transcript', async () => {
+      // Mock response for getMeetingTranscript
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: jest.fn().mockResolvedValue({
+          bot_id: 'bot-123',
+          meeting_id: 'meeting-456',
+          transcript: 'This is a test transcript of the meeting.',
+          speakers: [
+            { id: 'speaker-1', name: 'John Doe' },
+            { id: 'speaker-2', name: 'Jane Smith' },
+          ],
+          segments: [
+            {
+              speaker: 'speaker-1',
+              text: 'Hello everyone, welcome to our meeting.',
+              start_time: 0,
+              end_time: 3,
+            },
+            {
+              speaker: 'speaker-2',
+              text: 'Thank you for having me.',
+              start_time: 3,
+              end_time: 6,
+            },
+          ],
+        }),
+      } as any);
+
       const result = await getMeetingTranscript('bot-123');
 
       expect(result).toBeDefined();
@@ -125,6 +209,26 @@ describe('Recall.ai Integration', () => {
     });
 
     it('should handle transcript fetch for any bot ID', async () => {
+      // Mock response for getMeetingTranscript
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: jest.fn().mockResolvedValue({
+          bot_id: 'any-bot-id',
+          meeting_id: 'meeting-789',
+          transcript: 'This is another test transcript.',
+          speakers: [{ id: 'speaker-1', name: 'Test Speaker' }],
+          segments: [
+            {
+              speaker: 'speaker-1',
+              text: 'This is a test segment.',
+              start_time: 0,
+              end_time: 2,
+            },
+          ],
+        }),
+      } as any);
+
       const result = await getMeetingTranscript('any-bot-id');
 
       expect(result).toBeDefined();
