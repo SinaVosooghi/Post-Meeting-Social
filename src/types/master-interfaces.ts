@@ -1146,7 +1146,13 @@ export enum SocialPlatform {
   FACEBOOK = 'facebook',
   TWITTER = 'twitter',
   INSTAGRAM = 'instagram',
+  GOOGLE_CALENDAR = 'google_calendar',
 }
+
+/**
+ * Extended social platform type that includes calendar providers
+ */
+export type ExtendedSocialPlatform = SocialPlatform;
 
 export enum ContentTone {
   PROFESSIONAL = 'professional',
@@ -1734,7 +1740,97 @@ export interface LoadingState {
 }
 
 // ============================================================================
-// 11. DEPRECATIONS (Temporary aliases)
+// 11. CONTENT APPROVAL TYPES
+// ============================================================================
+
+/**
+ * Content approval request interface
+ */
+export interface ContentApprovalRequest {
+  readonly action: 'approve' | 'reject' | 'request_changes' | 'get_pending';
+  readonly contentId?: string;
+  readonly changes?: string;
+  readonly reason?: string;
+}
+
+/**
+ * Content approval response interface
+ */
+export interface ContentApprovalResponse {
+  readonly success: boolean;
+  readonly data?: {
+    readonly contentId: string;
+    readonly status: 'approved' | 'rejected' | 'pending_changes' | 'pending_approval';
+    readonly approvedAt?: string;
+    readonly approvedBy?: string;
+    readonly changes?: string;
+    readonly reason?: string;
+  };
+  readonly error?: {
+    readonly message: string;
+    readonly code: string;
+    readonly timestamp: string;
+  };
+}
+
+/**
+ * Recall.ai webhook event interface
+ */
+export interface RecallWebhookEvent {
+  readonly event: string;
+  readonly bot_id: string;
+  readonly data: {
+    readonly id: string;
+    readonly status: string;
+    readonly meeting_url?: string;
+    readonly recording_url?: string;
+    readonly transcript_url?: string;
+    readonly started_at?: string;
+    readonly ended_at?: string;
+    readonly error?: string;
+  };
+  readonly timestamp: string;
+}
+
+/**
+ * Facebook API Response Types
+ */
+export interface FacebookTokenResponse {
+  readonly access_token: string;
+  readonly expires_in: number;
+  readonly refresh_token?: string;
+  readonly scope: string;
+}
+
+export interface FacebookProfileResponse {
+  readonly id: string;
+  readonly name: string;
+  readonly email?: string;
+  readonly picture?: {
+    readonly data?: {
+      readonly url?: string;
+    };
+  };
+}
+
+export interface FacebookPostResponse {
+  readonly id: string;
+}
+
+export interface FacebookPostStatsResponse {
+  readonly data?: Array<{
+    readonly name: string;
+    readonly values?: Array<{
+      readonly value?: {
+        readonly like?: number;
+        readonly [key: string]: unknown;
+      };
+    }>;
+  }>;
+}
+
+// ============================================================================
+// 12. DEPRECATIONS (Temporary aliases)
 // ============================================================================
 
 /**

@@ -8,7 +8,7 @@
 import { google } from 'googleapis';
 import type { calendar_v3 } from 'googleapis';
 import type { CalendarEvent, GoogleCalendarConfig, GoogleCalendarAttendee } from '@/types';
-import { CalendarProvider } from '@/types';
+import { CalendarProvider } from '@/types/master-interfaces';
 import { MeetingParticipantRole } from '@/types/master-interfaces';
 import { calendarLogger } from './logger';
 
