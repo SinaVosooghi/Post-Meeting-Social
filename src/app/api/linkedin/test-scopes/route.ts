@@ -4,22 +4,28 @@ import type { Session } from 'next-auth';
 
 export async function GET() {
   try {
-    const session = (await auth()) as Session | null;
+    const session = await auth();
     if (!session) {
-      return NextResponse.json({
-        success: false,
-        error: 'Authentication required. Please sign in with Google first.',
-      }, { status: 401 });
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Authentication required. Please sign in with Google first.',
+        },
+        { status: 401 }
+      );
     }
 
     const linkedinClientId = process.env.LINKEDIN_CLIENT_ID;
     const redirectUri = `${process.env.NEXTAUTH_URL}/api/linkedin/callback`;
-    
+
     if (!linkedinClientId) {
-      return NextResponse.json({
-        success: false,
-        error: 'LinkedIn OAuth not configured',
-      }, { status: 500 });
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'LinkedIn OAuth not configured',
+        },
+        { status: 500 }
+      );
     }
 
     // Test different scope combinations
@@ -40,11 +46,11 @@ export async function GET() {
       url.searchParams.set('redirect_uri', redirectUri);
       url.searchParams.set('state', session.user?.id || 'default');
       url.searchParams.set('scope', test.scope);
-      
+
       return {
         name: test.name,
         scope: test.scope,
-        url: url.toString()
+        url: url.toString(),
       };
     });
 
@@ -52,14 +58,17 @@ export async function GET() {
       success: true,
       message: 'LinkedIn scope test URLs generated',
       testUrls,
-      instructions: 'Test each URL to see which scopes work with your LinkedIn app'
+      instructions: 'Test each URL to see which scopes work with your LinkedIn app',
     });
   } catch (error) {
     console.error('LinkedIn scope test error:', error);
-    return NextResponse.json({
-      success: false,
-      error: 'Failed to generate scope test URLs',
-      details: error instanceof Error ? error.message : 'Unknown error',
-    }, { status: 500 });
+    return NextResponse.json(
+      {
+        success: false,
+        error: 'Failed to generate scope test URLs',
+        details: error instanceof Error ? error.message : 'Unknown error',
+      },
+      { status: 500 }
+    );
   }
 }

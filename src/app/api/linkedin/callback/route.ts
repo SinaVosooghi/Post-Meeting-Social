@@ -23,7 +23,7 @@ export async function GET(request: Request) {
     }
 
     // Verify user is authenticated with Google
-    const session = (await auth()) as Session | null;
+    const session = await auth();
     if (!session || session.user?.email !== state) {
       return NextResponse.redirect(
         `${process.env.NEXTAUTH_URL}/demo?linkedin_error=Invalid session or state mismatch`
@@ -104,7 +104,7 @@ export async function GET(request: Request) {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Cookie': request.headers.get('cookie') || '',
+          Cookie: request.headers.get('cookie') || '',
         },
         body: JSON.stringify({
           accessToken: tokenData.access_token,

@@ -99,39 +99,39 @@ export async function scheduleMeetingBot(
         body: JSON.stringify(botConfig),
       });
 
-    return {
-      id: response.id,
-      meetingUrl,
-      status: response.status,
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
-      botName: botConfig.bot_name,
-      scheduledAt: new Date(response.created_at as string | number | Date),
-      startedAt: response.started_at
-        ? new Date(response.started_at as string | number | Date)
-        : null,
-      endedAt: response.ended_at ? new Date(response.ended_at as string | number | Date) : null,
-      recordingUrl: (response.recording_url as string) || null,
-      transcriptUrl: (response.transcript_url as string) || null,
-      config: {
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
-        recordAudio: botConfig.record_audio,
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
-        recordVideo: botConfig.record_video,
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
-        recordScreen: botConfig.record_screen,
-        transcriptionEnabled: true,
+      return {
+        id: response.id,
+        meetingUrl,
+        status: response.status,
         // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
         botName: botConfig.bot_name,
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
-        webhookUrl: botConfig.webhook_url,
-      },
-      metadata: {
-        meetingPlatform: detectMeetingPlatform(meetingUrl),
-        duration: null,
-        participantCount: null,
-        transcriptWordCount: null,
-      },
-    };
+        scheduledAt: new Date(response.created_at as string | number | Date),
+        startedAt: response.started_at
+          ? new Date(response.started_at as string | number | Date)
+          : null,
+        endedAt: response.ended_at ? new Date(response.ended_at as string | number | Date) : null,
+        recordingUrl: (response.recording_url as string) || null,
+        transcriptUrl: (response.transcript_url as string) || null,
+        config: {
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
+          recordAudio: botConfig.record_audio,
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
+          recordVideo: botConfig.record_video,
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
+          recordScreen: botConfig.record_screen,
+          transcriptionEnabled: true,
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
+          botName: botConfig.bot_name,
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
+          webhookUrl: botConfig.webhook_url,
+        },
+        metadata: {
+          meetingPlatform: detectMeetingPlatform(meetingUrl),
+          duration: null,
+          participantCount: null,
+          transcriptWordCount: null,
+        },
+      };
     } catch (apiError) {
       console.log('Recall.ai bot scheduling API failed:', apiError);
       // TODO: Fix real API instead of falling back to mock
@@ -248,7 +248,12 @@ export async function listMeetingBots(
         params.append('created_before', options.dateTo.toISOString());
       }
 
-      const response = await recallApiRequest<{count: number, next: string | null, previous: string | null, results: RecallBotApi[]}>(`/bot/?${params.toString()}`);
+      const response = await recallApiRequest<{
+        count: number;
+        next: string | null;
+        previous: string | null;
+        results: RecallBotApi[];
+      }>(`/bot/?${params.toString()}`);
 
       return response.results.map(bot => {
         // Handle meeting_url which might be a string or object
@@ -380,7 +385,7 @@ function detectMeetingPlatform(
   if (!meetingUrl || typeof meetingUrl !== 'string') {
     return 'other';
   }
-  
+
   const url = meetingUrl.toLowerCase();
   if (url.includes('zoom.us') || url.includes('zoom.com')) {
     return 'zoom';

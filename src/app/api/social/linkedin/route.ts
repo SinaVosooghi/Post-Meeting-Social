@@ -94,7 +94,7 @@ export async function POST(request: NextRequest) {
   try {
     // Check authentication
     // eslint-disable-next-line @typescript-eslint/no-unsafe-call
-    const session = (await auth()) as Session | null;
+    const session = await auth();
     if (!session?.user?.email) {
       return NextResponse.json(
         {

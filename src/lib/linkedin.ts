@@ -299,7 +299,7 @@ export async function postToLinkedIn(
 
     if (!response.ok) {
       const errorData = await response.text();
-      
+
       // If we get a permission error, return mock data for demo purposes
       if (response.status === 403 && errorData.includes('ACCESS_DENIED')) {
         console.log('LinkedIn permission denied - returning mock data for demo');
@@ -310,7 +310,7 @@ export async function postToLinkedIn(
           publishedAt: new Date(),
         };
       }
-      
+
       throw new Error(`LinkedIn posting failed: ${response.status} - ${errorData}`);
     }
 
@@ -661,10 +661,15 @@ export function validateLinkedInContent(content: string): {
   }
 
   // Check for required disclaimers (only for actual investment advice)
-  const hasInvestmentDisclaimer = content.toLowerCase().includes('investment') &&
+  const hasInvestmentDisclaimer =
+    content.toLowerCase().includes('investment') &&
     (content.toLowerCase().includes('advice') || content.toLowerCase().includes('recommendation'));
 
-  if (hasInvestmentDisclaimer && !content.toLowerCase().includes('not investment advice') && !content.toLowerCase().includes('does not constitute investment advice')) {
+  if (
+    hasInvestmentDisclaimer &&
+    !content.toLowerCase().includes('not investment advice') &&
+    !content.toLowerCase().includes('does not constitute investment advice')
+  ) {
     issues.push('Investment-related content requires disclaimer');
     riskScore += 25;
   }

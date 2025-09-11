@@ -18,9 +18,12 @@ import FacebookProvider from 'next-auth/providers/facebook';
 if (typeof window === 'undefined') {
   // Debug logging for environment variables
   const googleClientId = process.env.GOOGLE_CLIENT_ID || process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
-  const googleClientSecret = process.env.GOOGLE_CLIENT_SECRET || process.env.NEXT_PUBLIC_GOOGLE_CLIENT_SECRET;
-  const linkedinClientId = process.env.LINKEDIN_CLIENT_ID || process.env.NEXT_PUBLIC_LINKEDIN_CLIENT_ID;
-  const linkedinClientSecret = process.env.LINKEDIN_CLIENT_SECRET || process.env.NEXT_PUBLIC_LINKEDIN_CLIENT_SECRET;
+  const googleClientSecret =
+    process.env.GOOGLE_CLIENT_SECRET || process.env.NEXT_PUBLIC_GOOGLE_CLIENT_SECRET;
+  const linkedinClientId =
+    process.env.LINKEDIN_CLIENT_ID || process.env.NEXT_PUBLIC_LINKEDIN_CLIENT_ID;
+  const linkedinClientSecret =
+    process.env.LINKEDIN_CLIENT_SECRET || process.env.NEXT_PUBLIC_LINKEDIN_CLIENT_SECRET;
 
   // Debug: Log the actual values (without exposing secrets)
   console.log('🔍 Environment Variables Debug:', {
@@ -126,7 +129,7 @@ const redirectCallback = async ({ url, baseUrl }: { url: string; baseUrl: string
   if (url.includes('/dashboard')) {
     return `${baseUrl}/demo`;
   }
-  
+
   // Redirect to home page after successful login
   if (url.startsWith('/')) {
     return `${baseUrl}${url}`;
@@ -177,10 +180,10 @@ function getAuthConfig() {
       clientId: googleClientId.substring(0, 20) + '...',
       clientSecret: googleClientSecret.substring(0, 10) + '...',
     });
-    
+
     const googleProvider = GoogleProvider({
-      clientId: googleClientId as string,
-      clientSecret: googleClientSecret as string,
+      clientId: googleClientId,
+      clientSecret: googleClientSecret,
       authorization: {
         params: {
           scope:

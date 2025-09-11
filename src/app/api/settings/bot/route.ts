@@ -3,16 +3,19 @@ import { auth } from '@/lib/auth-wrapper';
 import type { Session } from 'next-auth';
 
 // Simple in-memory storage for bot settings (persists per session, not across server restarts)
-const botSettingsStorage = new Map<string, {
-  joinMinutesBefore: number;
-  autoSchedule: boolean;
-  maxConcurrentBots: number;
-  updatedAt: Date;
-}>();
+const botSettingsStorage = new Map<
+  string,
+  {
+    joinMinutesBefore: number;
+    autoSchedule: boolean;
+    maxConcurrentBots: number;
+    updatedAt: Date;
+  }
+>();
 
 export async function GET() {
   try {
-    const session = (await auth()) as Session | null;
+    const session = await auth();
     if (!session?.user?.email) {
       return NextResponse.json(
         { success: false, error: { message: 'Authentication required' } },
@@ -54,7 +57,7 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
-    const session = (await auth()) as Session | null;
+    const session = await auth();
     if (!session?.user?.email) {
       return NextResponse.json(
         { success: false, error: { message: 'Authentication required' } },

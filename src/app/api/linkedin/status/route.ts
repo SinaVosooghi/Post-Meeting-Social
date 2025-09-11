@@ -5,7 +5,7 @@ import type { Session } from 'next-auth';
 
 export async function GET() {
   try {
-    const session = (await auth()) as Session | null;
+    const session = await auth();
     if (!session?.user?.email) {
       return NextResponse.json({
         success: false,
@@ -19,8 +19,9 @@ export async function GET() {
     const sessionLinkedIn = session.providerTokens?.linkedin;
 
     // If we have a valid token in either location
-    const hasValidToken = (linkedinToken && isLinkedInTokenValid(linkedinToken)) || 
-                         (sessionLinkedIn?.connected && sessionLinkedIn?.accessToken);
+    const hasValidToken =
+      (linkedinToken && isLinkedInTokenValid(linkedinToken)) ||
+      (sessionLinkedIn?.connected && sessionLinkedIn?.accessToken);
 
     if (!hasValidToken) {
       return NextResponse.json({
@@ -31,7 +32,7 @@ export async function GET() {
           hasTokenStore: !!linkedinToken,
           hasSessionToken: !!sessionLinkedIn?.connected,
           tokenStoreValid: linkedinToken ? isLinkedInTokenValid(linkedinToken) : false,
-        }
+        },
       });
     }
 
@@ -39,7 +40,7 @@ export async function GET() {
     const profile = linkedinToken?.profile || {
       id: 'linkedin-user',
       name: 'LinkedIn User',
-      email: session.user.email
+      email: session.user.email,
     };
 
     return NextResponse.json({
@@ -50,7 +51,7 @@ export async function GET() {
         expiresAt: linkedinToken?.expiresAt || Date.now() + 3600000, // 1 hour default
         isExpired: linkedinToken ? !isLinkedInTokenValid(linkedinToken) : false,
       },
-      source: linkedinToken ? 'token-store' : 'session'
+      source: linkedinToken ? 'token-store' : 'session',
     });
   } catch (error) {
     console.error('LinkedIn status check error:', error);

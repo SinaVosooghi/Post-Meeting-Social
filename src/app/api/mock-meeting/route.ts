@@ -12,7 +12,7 @@ export async function GET() {
       attendees: [
         { name: 'John Smith', email: 'john@client.com' },
         { name: 'Sarah Johnson', email: 'sarah@client.com' },
-        { name: 'You', email: 'lovley.messi@gmail.com' }
+        { name: 'You', email: 'lovley.messi@gmail.com' },
       ],
       transcript: `John: Good morning everyone, thanks for joining today's strategy session.
 
@@ -72,18 +72,18 @@ Key takeaways:
 ✅ Marketing campaign kicking off in October
 
 Excited about the roadmap ahead! #Strategy #ClientSuccess #Q4Planning`,
-          status: 'draft'
+          status: 'draft',
         },
         {
           id: 'post-2',
           platform: 'facebook',
           content: `Great meeting with our clients today! We're making solid progress on our Q4 initiatives and I'm excited about the direction we're heading. The team is aligned and ready to execute! 💪`,
-          status: 'draft'
-        }
+          status: 'draft',
+        },
       ],
       botId: 'bot-1757277539051-6ht8qynxj',
       recordingUrl: 'https://recall.ai/recordings/mock-recording-1',
-      status: 'completed'
+      status: 'completed',
     };
 
     return NextResponse.json({
@@ -91,8 +91,8 @@ Excited about the roadmap ahead! #Strategy #ClientSuccess #Q4Planning`,
       data: mockMeeting,
       metadata: {
         timestamp: new Date().toISOString(),
-        note: 'Mock meeting data for testing purposes'
-      }
+        note: 'Mock meeting data for testing purposes',
+      },
     });
   } catch (error) {
     console.error('Mock meeting error:', error);
@@ -100,7 +100,7 @@ Excited about the roadmap ahead! #Strategy #ClientSuccess #Q4Planning`,
       {
         success: false,
         error: 'Failed to generate mock meeting',
-        details: error instanceof Error ? error.message : 'Unknown error'
+        details: error instanceof Error ? error.message : 'Unknown error',
       },
       { status: 500 }
     );

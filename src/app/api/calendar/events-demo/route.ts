@@ -4,13 +4,14 @@ import type { CalendarEvent } from '@/types/master-interfaces';
 export async function GET() {
   try {
     console.log('Calendar demo API called - returning mock data');
-    
+
     // Mock calendar events for demo
     const mockEvents: CalendarEvent[] = [
       {
         id: 'event-1',
         summary: 'Client Portfolio Review - John Smith',
-        description: 'Quarterly portfolio review and investment strategy discussion. Zoom link: https://zoom.us/j/123456789',
+        description:
+          'Quarterly portfolio review and investment strategy discussion. Zoom link: https://zoom.us/j/123456789',
         start: {
           dateTime: new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString(), // 2 hours from now
           timeZone: 'America/New_York',
@@ -39,7 +40,8 @@ export async function GET() {
       {
         id: 'event-2',
         summary: 'Investment Strategy Meeting - Sarah Johnson',
-        description: 'Discussing ESG investment opportunities and sustainable finance options. Teams link: https://teams.microsoft.com/l/meetup-join/987654321',
+        description:
+          'Discussing ESG investment opportunities and sustainable finance options. Teams link: https://teams.microsoft.com/l/meetup-join/987654321',
         start: {
           dateTime: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(), // Tomorrow
           timeZone: 'America/New_York',
@@ -68,7 +70,8 @@ export async function GET() {
       {
         id: 'event-3',
         summary: 'Risk Assessment Call - Mike Wilson',
-        description: 'Risk tolerance evaluation and portfolio rebalancing discussion. Google Meet: https://meet.google.com/abc-defg-hij',
+        description:
+          'Risk tolerance evaluation and portfolio rebalancing discussion. Google Meet: https://meet.google.com/abc-defg-hij',
         start: {
           dateTime: new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString(), // Day after tomorrow
           timeZone: 'America/New_York',
@@ -121,4 +124,3 @@ export async function GET() {
     );
   }
 }
-

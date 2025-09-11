@@ -82,7 +82,6 @@ export default function HomePage() {
   const [activeTab, setActiveTab] = useState<'posts' | 'email'>('posts');
   const [error, setError] = useState<string | null>(null);
 
-
   // Handle post generation
   const handleGeneratePosts = async () => {
     // Check if user is authenticated

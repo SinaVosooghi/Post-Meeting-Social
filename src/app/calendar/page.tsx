@@ -14,8 +14,7 @@ export default function CalendarPage() {
   const [error, setError] = useState<string | null>(null);
 
   const detectMeetingPlatform = (event: CalendarEvent): MeetingPlatform => {
-    const text =
-      `${event.title} ${event.description || ''} ${event.location || ''}`.toLowerCase();
+    const text = `${event.title} ${event.description || ''} ${event.location || ''}`.toLowerCase();
 
     if (text.includes('zoom.us') || text.includes('zoom')) {
       return MeetingPlatform.ZOOM;
@@ -69,7 +68,9 @@ export default function CalendarPage() {
       ]);
 
       const eventsResult = (await eventsResponse.json()) as ApiResponse<CalendarEvent[]>;
-      const botStatusResult = (await botStatusResponse.json()) as ApiResponse<Record<string, { botScheduled: boolean; botId: string | null; scheduledAt: string }>>;
+      const botStatusResult = (await botStatusResponse.json()) as ApiResponse<
+        Record<string, { botScheduled: boolean; botId: string | null; scheduledAt: string }>
+      >;
 
       if (eventsResult.success && eventsResult.data) {
         const processedEvents = eventsResult.data.map(event => ({
@@ -77,8 +78,12 @@ export default function CalendarPage() {
           platform: detectMeetingPlatform(event),
           meetingUrl: extractMeetingUrl(event),
           // Merge bot status from database
-          botScheduled: botStatusResult.success ? botStatusResult.data[event.id]?.botScheduled || false : false,
-          botId: botStatusResult.success ? botStatusResult.data[event.id]?.botId || undefined : undefined,
+          botScheduled: botStatusResult.success
+            ? botStatusResult.data[event.id]?.botScheduled || false
+            : false,
+          botId: botStatusResult.success
+            ? botStatusResult.data[event.id]?.botId || undefined
+            : undefined,
         }));
         setEvents(processedEvents);
       } else {
@@ -195,9 +200,11 @@ export default function CalendarPage() {
                       onClick={() => void scheduleBot(event.id)}
                       disabled={!extractMeetingUrl(event) || event.botScheduled}
                       size="sm"
-                      variant={event.botScheduled ? "secondary" : "default"}
+                      variant={event.botScheduled ? 'secondary' : 'default'}
                     >
-                      {event.botScheduled ? `Bot Scheduled (${event.botId?.slice(-8)})` : 'Schedule Bot'}
+                      {event.botScheduled
+                        ? `Bot Scheduled (${event.botId?.slice(-8)})`
+                        : 'Schedule Bot'}
                     </Button>
                     <Button variant="outline" size="sm">
                       View Details

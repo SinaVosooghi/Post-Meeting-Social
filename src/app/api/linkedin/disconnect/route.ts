@@ -6,7 +6,7 @@ import type { Session } from 'next-auth';
 export async function POST() {
   try {
     // Check if user is authenticated with Google
-    const session = (await auth()) as Session | null;
+    const session = await auth();
     if (!session?.user?.email) {
       return NextResponse.json(
         {

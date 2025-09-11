@@ -88,14 +88,14 @@ export function LinkedInConnection() {
   // Check status on component mount and when URL changes
   useEffect(() => {
     checkLinkedInStatus();
-    
+
     // Also check when the page becomes visible (in case of redirect back)
     const handleVisibilityChange = () => {
       if (!document.hidden) {
         checkLinkedInStatus();
       }
     };
-    
+
     document.addEventListener('visibilitychange', handleVisibilityChange);
     return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
   }, []);

@@ -82,6 +82,7 @@ export default function MeetingsPage() {
         setError(result.error?.message || 'Failed to fetch meetings');
       }
     } catch (err) {
+      console.error('Error fetching meetings:', err);
       setError('Network error occurred');
     } finally {
       setIsLoading(false);

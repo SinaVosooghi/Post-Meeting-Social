@@ -6,7 +6,7 @@ import type { CalendarEvent } from '@/types/master-interfaces';
 
 export async function GET() {
   try {
-    const session = (await auth()) as Session | null;
+    const session = await auth();
     if (!session) {
       return NextResponse.json(
         { success: false, error: { message: 'Authentication required' } },
@@ -17,7 +17,10 @@ export async function GET() {
     // Check if user has Google access token
     if (!session.accessToken) {
       return NextResponse.json(
-        { success: false, error: { message: 'Google Calendar not connected. Please sign in with Google.' } },
+        {
+          success: false,
+          error: { message: 'Google Calendar not connected. Please sign in with Google.' },
+        },
         { status: 401 }
       );
     }
@@ -27,6 +30,8 @@ export async function GET() {
     const events = await getUpcomingEvents(session.accessToken, {
       maxResults: 20,
       timeMin: new Date(),
+      refreshToken: session.refreshToken,
+      expiresAt: session.expiresAt,
     });
 
     return NextResponse.json({

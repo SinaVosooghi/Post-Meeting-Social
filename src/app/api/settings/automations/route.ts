@@ -3,16 +3,22 @@ import { auth } from '@/lib/auth-wrapper';
 import type { Session } from 'next-auth';
 
 // Simple in-memory storage for automation settings (persists per session, not across server restarts)
-const automationSettingsStorage = new Map<string, Record<string, {
-  tone: string;
-  frequency: string;
-  autoGenerate: boolean;
-  updatedAt: Date;
-}>>();
+const automationSettingsStorage = new Map<
+  string,
+  Record<
+    string,
+    {
+      tone: string;
+      frequency: string;
+      autoGenerate: boolean;
+      updatedAt: Date;
+    }
+  >
+>();
 
 export async function GET() {
   try {
-    const session = (await auth()) as Session | null;
+    const session = await auth();
     if (!session?.user?.email) {
       return NextResponse.json(
         { success: false, error: { message: 'Authentication required' } },
@@ -49,7 +55,7 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
-    const session = (await auth()) as Session | null;
+    const session = await auth();
     if (!session?.user?.email) {
       return NextResponse.json(
         { success: false, error: { message: 'Authentication required' } },
@@ -57,11 +63,14 @@ export async function POST(request: Request) {
       );
     }
 
-    const body = (await request.json()) as Record<string, {
-      tone: string;
-      frequency: string;
-      autoGenerate: boolean;
-    }>;
+    const body = (await request.json()) as Record<
+      string,
+      {
+        tone: string;
+        frequency: string;
+        autoGenerate: boolean;
+      }
+    >;
 
     // Validate input
     for (const [platform, settings] of Object.entries(body)) {
@@ -100,7 +109,10 @@ export async function POST(request: Request) {
 
     automationSettingsStorage.set(session.user.email, settingsWithTimestamp);
 
-    console.log(`🤖 Automation settings updated for user: ${session.user.email}`, settingsWithTimestamp);
+    console.log(
+      `🤖 Automation settings updated for user: ${session.user.email}`,
+      settingsWithTimestamp
+    );
 
     return NextResponse.json({
       success: true,

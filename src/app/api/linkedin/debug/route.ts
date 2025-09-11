@@ -15,23 +15,23 @@ export async function GET() {
         nexAuthUrl: process.env.NEXTAUTH_URL,
         availableScopes: [
           'r_liteprofile',
-          'r_emailaddress', 
+          'r_emailaddress',
           'w_member_social',
           'openid',
           'profile',
-          'email'
+          'email',
         ],
         recommendedScopes: [
           'r_liteprofile', // Basic profile - should work
-          'w_member_social' // Posting - might need approval
-        ]
-      }
+          'w_member_social', // Posting - might need approval
+        ],
+      },
     });
   } catch (error) {
     return NextResponse.json({
       success: false,
       error: 'Debug failed',
-      details: error instanceof Error ? error.message : 'Unknown error'
+      details: error instanceof Error ? error.message : 'Unknown error',
     });
   }
 }

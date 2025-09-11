@@ -7,14 +7,17 @@ import type { GeneratePostsRequest } from '@/types';
 
 export async function POST(request: NextRequest) {
   try {
-    const session = (await auth()) as Session | null;
-    
+    const session = await auth();
+
     if (!session) {
-      return NextResponse.json({
-        success: false,
-        message: 'Authentication required. Please sign in first.',
-        signedIn: false
-      }, { status: 401 });
+      return NextResponse.json(
+        {
+          success: false,
+          message: 'Authentication required. Please sign in first.',
+          signedIn: false,
+        },
+        { status: 401 }
+      );
     }
 
     const body = await request.json();
@@ -24,15 +27,18 @@ export async function POST(request: NextRequest) {
       transcriptLength: transcript?.length,
       meetingTitle: meetingContext?.title,
       settings: automationSettings,
-      fullBody: body
+      fullBody: body,
     });
 
     // Validate required fields
     if (!transcript) {
-      return NextResponse.json({
-        success: false,
-        error: 'Transcript is required'
-      }, { status: 400 });
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Transcript is required',
+        },
+        { status: 400 }
+      );
     }
 
     // Use provided meetingContext or create default
@@ -40,7 +46,7 @@ export async function POST(request: NextRequest) {
       title: 'Meeting Discussion',
       attendees: ['Meeting Participants'],
       duration: 30,
-      platform: 'zoom'
+      platform: 'zoom',
     };
 
     // Use real OpenAI API to generate posts
@@ -52,8 +58,8 @@ export async function POST(request: NextRequest) {
         length: 'medium',
         includeHashtags: true,
         includeEmojis: true,
-        platforms: ['linkedin', 'twitter', 'instagram']
-      }
+        platforms: ['linkedin', 'twitter', 'instagram'],
+      },
     };
 
     let result;
@@ -63,7 +69,7 @@ export async function POST(request: NextRequest) {
       result = await generateSocialMediaPosts(generateRequest);
     } catch (error) {
       console.warn('OpenAI API failed, falling back to mock data:', error);
-      
+
       // Check if it's a quota exceeded error
       if (error instanceof Error && error.message.includes('429')) {
         console.log('OpenAI quota exceeded, using mock data');
@@ -81,7 +87,7 @@ export async function POST(request: NextRequest) {
       wordCount: post.content.split(' ').length,
       characterCount: post.content.length,
       estimatedEngagement: 'High',
-      bestTimeToPost: 'Tuesday-Thursday, 8-10 AM or 1-3 PM'
+      bestTimeToPost: 'Tuesday-Thursday, 8-10 AM or 1-3 PM',
     }));
 
     return NextResponse.json({
@@ -97,19 +103,23 @@ export async function POST(request: NextRequest) {
           averageEngagement: 'High',
           recommendedPostingTime: 'Tuesday-Thursday, 8-10 AM',
           usingMockData,
-          note: usingMockData ? 'Using mock data due to OpenAI quota exceeded' : 'Generated with OpenAI API'
+          note: usingMockData
+            ? 'Using mock data due to OpenAI quota exceeded'
+            : 'Generated with OpenAI API',
         },
         meetingContext: context,
-        generatedAt: new Date().toISOString()
-      }
+        generatedAt: new Date().toISOString(),
+      },
     });
-
   } catch (error) {
     console.error('Generate posts error:', error);
-    return NextResponse.json({
-      success: false,
-      error: 'Failed to generate social media posts',
-      details: error instanceof Error ? error.message : 'Unknown error'
-    }, { status: 500 });
+    return NextResponse.json(
+      {
+        success: false,
+        error: 'Failed to generate social media posts',
+        details: error instanceof Error ? error.message : 'Unknown error',
+      },
+      { status: 500 }
+    );
   }
 }

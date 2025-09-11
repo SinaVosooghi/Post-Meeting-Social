@@ -23,11 +23,16 @@ export default function SettingsPage() {
   const [success, setSuccess] = useState<string | null>(null);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
-  const [automations, setAutomations] = useState<Record<string, {
-    tone: string;
-    frequency: string;
-    autoGenerate: boolean;
-  }>>({});
+  const [automations, setAutomations] = useState<
+    Record<
+      string,
+      {
+        tone: string;
+        frequency: string;
+        autoGenerate: boolean;
+      }
+    >
+  >({});
 
   const showToast = (message: string, type: 'success' | 'error') => {
     setToast({ message, type });
@@ -60,8 +65,13 @@ export default function SettingsPage() {
 
       if (result.success) {
         setSocialConnections(result.data);
-        setSuccess(`${platform.charAt(0).toUpperCase() + platform.slice(1)} connected successfully!`);
-        showToast(`${platform.charAt(0).toUpperCase() + platform.slice(1)} connected successfully!`, 'success');
+        setSuccess(
+          `${platform.charAt(0).toUpperCase() + platform.slice(1)} connected successfully!`
+        );
+        showToast(
+          `${platform.charAt(0).toUpperCase() + platform.slice(1)} connected successfully!`,
+          'success'
+        );
       } else {
         setError(result.error?.message || `Failed to connect ${platform}`);
         showToast(result.error?.message || `Failed to connect ${platform}`, 'error');
@@ -97,7 +107,10 @@ export default function SettingsPage() {
         setSuccess(
           `${platform.charAt(0).toUpperCase() + platform.slice(1)} disconnected successfully!`
         );
-        showToast(`${platform.charAt(0).toUpperCase() + platform.slice(1)} disconnected successfully!`, 'success');
+        showToast(
+          `${platform.charAt(0).toUpperCase() + platform.slice(1)} disconnected successfully!`,
+          'success'
+        );
       } else {
         setError(result.error?.message || `Failed to disconnect ${platform}`);
         showToast(result.error?.message || `Failed to disconnect ${platform}`, 'error');
@@ -216,7 +229,7 @@ export default function SettingsPage() {
         // Load bot settings
         const botResponse = await fetch('/api/settings/bot');
         const botResult = await botResponse.json();
-        
+
         if (botResult.success) {
           setBotSettings(botResult.data);
         } else {
@@ -227,15 +240,16 @@ export default function SettingsPage() {
         // Load social connections
         const socialResponse = await fetch('/api/settings/social');
         const socialResult = await socialResponse.json();
-        
+
         if (socialResult.success) {
           // If no data from API, use default connections
-          const connections = socialResult.data.length > 0 
-            ? socialResult.data 
-            : [
-                { platform: 'linkedin', connected: false },
-                { platform: 'facebook', connected: false },
-              ];
+          const connections =
+            socialResult.data.length > 0
+              ? socialResult.data
+              : [
+                  { platform: 'linkedin', connected: false },
+                  { platform: 'facebook', connected: false },
+                ];
           setSocialConnections(connections);
         } else {
           // Fallback to default connections if API fails
@@ -248,7 +262,7 @@ export default function SettingsPage() {
         // Load automation settings
         const automationResponse = await fetch('/api/settings/automations');
         const automationResult = await automationResponse.json();
-        
+
         if (automationResult.success) {
           setAutomations(automationResult.data);
         }
@@ -464,10 +478,12 @@ export default function SettingsPage() {
                           <div className="grid md:grid-cols-2 gap-4">
                             <div>
                               <Label className="text-sm font-medium">Content Tone</Label>
-                              <select 
+                              <select
                                 className="w-full mt-1 p-2 border rounded-md"
                                 value={automations[connection.platform]?.tone || 'Professional'}
-                                onChange={(e) => updateAutomation(connection.platform, 'tone', e.target.value)}
+                                onChange={e =>
+                                  updateAutomation(connection.platform, 'tone', e.target.value)
+                                }
                               >
                                 <option value="Professional">Professional</option>
                                 <option value="Casual">Casual</option>
@@ -478,10 +494,14 @@ export default function SettingsPage() {
 
                             <div>
                               <Label className="text-sm font-medium">Post Frequency</Label>
-                              <select 
+                              <select
                                 className="w-full mt-1 p-2 border rounded-md"
-                                value={automations[connection.platform]?.frequency || 'Every meeting'}
-                                onChange={(e) => updateAutomation(connection.platform, 'frequency', e.target.value)}
+                                value={
+                                  automations[connection.platform]?.frequency || 'Every meeting'
+                                }
+                                onChange={e =>
+                                  updateAutomation(connection.platform, 'frequency', e.target.value)
+                                }
                               >
                                 <option value="Every meeting">Every meeting</option>
                                 <option value="Daily">Daily</option>
@@ -492,10 +512,12 @@ export default function SettingsPage() {
                           </div>
 
                           <div className="flex items-center space-x-2">
-                            <Switch 
+                            <Switch
                               id={`auto-${connection.platform}`}
                               checked={automations[connection.platform]?.autoGenerate || false}
-                              onCheckedChange={(checked) => updateAutomation(connection.platform, 'autoGenerate', checked)}
+                              onCheckedChange={checked =>
+                                updateAutomation(connection.platform, 'autoGenerate', checked)
+                              }
                             />
                             <Label
                               htmlFor={`auto-${connection.platform}`}
@@ -530,9 +552,7 @@ export default function SettingsPage() {
         <div className="fixed top-4 right-4 z-50">
           <div
             className={`px-6 py-3 rounded-lg shadow-lg text-white font-medium ${
-              toast.type === 'success' 
-                ? 'bg-green-500' 
-                : 'bg-red-500'
+              toast.type === 'success' ? 'bg-green-500' : 'bg-red-500'
             }`}
           >
             {toast.message}

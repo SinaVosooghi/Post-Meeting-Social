@@ -31,7 +31,7 @@ describe('Recall.ai Integration', () => {
       RECALL_AI_API_KEY: 'test-recall-api-key',
       RECALL_AI_BASE_URL: 'https://api.recall.ai',
     };
-    
+
     // Mock successful fetch responses by default
     mockFetch.mockResolvedValue({
       ok: true,

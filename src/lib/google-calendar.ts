@@ -5,7 +5,8 @@
  * Handles Google Calendar OAuth, event fetching, and meeting management
  */
 
-import { google, calendar_v3 } from 'googleapis';
+import type { calendar_v3 } from 'googleapis';
+import { google } from 'googleapis';
 import type { CalendarEvent, GoogleCalendarConfig, GoogleCalendarAttendee } from '@/types';
 import { CalendarProvider } from '@/types/master-interfaces';
 import { MeetingParticipantRole } from '@/types/master-interfaces';
@@ -69,7 +70,11 @@ const GOOGLE_CALENDAR_CONFIG: GoogleCalendarConfig = {
 /**
  * Creates authenticated Google Calendar client
  */
-export function createGoogleCalendarClient(accessToken: string, refreshToken?: string, expiresAt?: number) {
+export function createGoogleCalendarClient(
+  accessToken: string,
+  refreshToken?: string,
+  expiresAt?: number
+) {
   const auth = new google.auth.OAuth2(
     GOOGLE_CALENDAR_CONFIG.clientId,
     GOOGLE_CALENDAR_CONFIG.clientSecret,
@@ -112,7 +117,11 @@ export async function getUpcomingEvents(
   } = {}
 ): Promise<CalendarEvent[]> {
   try {
-    const calendar = createGoogleCalendarClient(accessToken, options.refreshToken, options.expiresAt);
+    const calendar = createGoogleCalendarClient(
+      accessToken,
+      options.refreshToken,
+      options.expiresAt
+    );
 
     const { maxResults = 20, timeMin = new Date(), timeMax, calendarId = 'primary' } = options;
 
