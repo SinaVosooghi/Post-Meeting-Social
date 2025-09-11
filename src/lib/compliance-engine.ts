@@ -13,15 +13,13 @@ import type {
   RiskAssessment,
   ContentModifications,
   ApprovalWorkflow,
-  ValidationType,
-  ValidationStatus,
   ComplianceID,
   ContentID,
   AdvisorID,
   MeetingID,
 } from '@/types/master-interfaces';
 import { RiskLevel, ValidationType, ValidationStatus } from '@/types/master-interfaces';
-import { complianceLogger } from './logger';
+import { authLogger as complianceLogger } from './logger';
 
 // ============================================================================
 // COMPLIANCE RULES & REGULATIONS
@@ -265,6 +263,7 @@ export class ComplianceEngine {
       severity,
       recommendations,
       ruleViolations,
+      requiredActions: issues.length > 0 ? ['Review and address compliance issues'] : [],
     };
   }
 
@@ -304,6 +303,7 @@ export class ComplianceEngine {
       severity,
       recommendations,
       ruleViolations,
+      requiredActions: issues.length > 0 ? ['Review and address compliance issues'] : [],
     };
   }
 
@@ -323,6 +323,7 @@ export class ComplianceEngine {
       severity: 'low',
       recommendations: [],
       ruleViolations: [],
+      requiredActions: [],
     };
   }
 
@@ -440,13 +441,13 @@ export class ComplianceEngine {
     const failedChecks = complianceResults.filter(r => !r.passed).length;
 
     if (criticalIssues > 0) {
-      return 'rejected';
+      return ValidationStatus.REJECTED;
     } else if (highIssues > 0 || failedChecks > 2) {
-      return 'requires_modification';
+      return ValidationStatus.REQUIRES_MODIFICATION;
     } else if (failedChecks > 0) {
-      return 'pending';
+      return ValidationStatus.PENDING;
     } else {
-      return 'approved';
+      return ValidationStatus.APPROVED;
     }
   }
 

@@ -1,14 +1,21 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth-wrapper';
+import { scheduleBotWithUserSettings, getUserBotSchedules } from '@/lib/recall-ai';
 import type { Session } from 'next-auth';
 
-// Simple in-memory storage for bot schedules
-const botSchedules = new Map<string, { botId: string; eventId: string; scheduledAt: Date; userId: string }>();
+/**
+ * Recall.ai Bot Management API Controller
+ * Thin controller layer that delegates to business logic in lib/recall-ai.ts
+ */
 
+/**
+ * POST /api/recall/bots
+ * Schedule a new meeting bot for recording
+ */
 export async function POST(request: Request) {
   try {
+    // 1. Authentication check
     const session = (await auth()) as Session | null;
-
     if (!session?.user?.email) {
       return NextResponse.json(
         { success: false, error: { message: 'Authentication required' } },
@@ -16,33 +23,40 @@ export async function POST(request: Request) {
       );
     }
 
-    const body = (await request.json()) as { eventId: string; joinMinutesBefore?: number };
-    const { eventId, joinMinutesBefore = 5 } = body;
+    // 2. Parse request body
+    const body = (await request.json()) as {
+      eventId: string;
+      joinMinutesBefore?: number;
+      meetingUrl?: string;
+    };
+    const { eventId, meetingUrl } = body;
 
-    // Generate bot ID
-    const botId = `bot-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    if (!meetingUrl) {
+      return NextResponse.json(
+        { success: false, error: { message: 'Meeting URL is required' } },
+        { status: 400 }
+      );
+    }
 
-    // Store bot schedule in memory
-    const scheduleKey = `${session.user.email}-${eventId}`;
-    botSchedules.set(scheduleKey, {
-      botId,
+    // 3. Delegate to business logic
+    const result = await scheduleBotWithUserSettings(
+      session.user.email,
       eventId,
-      scheduledAt: new Date(),
-      userId: session.user.email,
-    });
+      meetingUrl,
+      body.joinMinutesBefore
+    );
 
-    console.log(`🤖 Bot scheduled: ${botId} for event: ${eventId}`);
+    if (!result.success) {
+      return NextResponse.json(
+        { success: false, error: { message: result.error } },
+        { status: 400 }
+      );
+    }
 
+    // 4. Return success response
     return NextResponse.json({
       success: true,
-      data: {
-        botId,
-        eventId,
-        status: 'scheduled',
-        joinMinutesBefore,
-        scheduledAt: new Date().toISOString(),
-        message: 'Bot successfully scheduled for meeting',
-      },
+      data: result.data,
       metadata: {
         timestamp: new Date().toISOString(),
         requestId: crypto.randomUUID(),
@@ -64,10 +78,14 @@ export async function POST(request: Request) {
   }
 }
 
+/**
+ * GET /api/recall/bots
+ * Retrieve all bot schedules for the authenticated user
+ */
 export async function GET() {
   try {
+    // 1. Authentication check
     const session = (await auth()) as Session | null;
-    
     if (!session?.user?.email) {
       return NextResponse.json(
         { success: false, error: { message: 'Authentication required' } },
@@ -75,26 +93,24 @@ export async function GET() {
       );
     }
 
-    // Get bot schedules for this user
-    const userSchedules: Record<string, { botScheduled: boolean; botId: string | null; scheduledAt: Date }> = {};
-    
-    for (const [key, schedule] of botSchedules.entries()) {
-      if (schedule.userId === session.user.email) {
-        userSchedules[schedule.eventId] = {
-          botScheduled: true,
-          botId: schedule.botId,
-          scheduledAt: schedule.scheduledAt,
-        };
-      }
+    // 2. Delegate to business logic
+    const result = await getUserBotSchedules(session.user.email);
+
+    if (!result.success) {
+      return NextResponse.json(
+        { success: false, error: { message: result.error } },
+        { status: 500 }
+      );
     }
 
+    // 3. Return formatted response
     return NextResponse.json({
       success: true,
-      data: userSchedules,
+      data: result.data,
       metadata: {
         timestamp: new Date().toISOString(),
         requestId: crypto.randomUUID(),
-        totalMeetings: Object.keys(userSchedules).length,
+        totalMeetings: Object.keys(result.data).length,
       },
     });
   } catch (error) {

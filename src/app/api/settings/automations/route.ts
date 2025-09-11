@@ -100,7 +100,7 @@ export async function POST(request: Request) {
 
     automationSettingsStorage.set(session.user.email, settingsWithTimestamp);
 
-    console.log(`🤖 Automation settings updated for user: ${session.user.email}`, settingsWithTimestamp);
+    console.log(`🤖 Automation settings updated for user: ${session.user.email}`);
 
     return NextResponse.json({
       success: true,

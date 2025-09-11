@@ -192,7 +192,7 @@ export async function generateSocialMediaPosts(
     const allPosts: GeneratePostsResponse['posts'] = [];
 
     // For demo purposes, we'll generate for LinkedIn (most common for financial advisors)
-    const platforms = [SocialPlatform.LINKEDIN];
+    const platforms = [SocialPlatform.LINKEDIN, SocialPlatform.FACEBOOK];
 
     for (const platform of platforms) {
       const prompt = createPostPrompt(

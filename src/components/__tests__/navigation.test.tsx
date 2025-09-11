@@ -20,6 +20,8 @@ jest.mock('next-auth/react', () => ({
   SessionProvider: ({ children }: { children: React.ReactNode }) => children, // eslint-disable-line @typescript-eslint/naming-convention
 }));
 
+const mockUseSession = useSession as jest.MockedFunction<typeof useSession>;
+
 import { useSession } from 'next-auth/react';
 
 // Mock Next.js Image component
@@ -72,7 +74,7 @@ describe('Navigation Component', () => {
 
   describe('Unauthenticated State', () => {
     beforeEach(() => {
-      useSession.mockReturnValue({
+      mockUseSession.mockReturnValue({
         data: null,
         status: 'unauthenticated',
       });
@@ -112,10 +114,11 @@ describe('Navigation Component', () => {
         email: 'john@example.com',
         image: 'https://example.com/avatar.jpg',
       },
+      expires: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
     };
 
     beforeEach(() => {
-      useSession.mockReturnValue({
+      mockUseSession.mockReturnValue({
         data: mockSession,
         status: 'authenticated',
       });
@@ -193,7 +196,7 @@ describe('Navigation Component', () => {
         },
       };
 
-      useSession.mockReturnValue({
+      mockUseSession.mockReturnValue({
         data: sessionWithoutImage,
         status: 'authenticated',
       });
@@ -206,7 +209,7 @@ describe('Navigation Component', () => {
 
   describe('Loading State', () => {
     beforeEach(() => {
-      useSession.mockReturnValue({
+      mockUseSession.mockReturnValue({
         data: null,
         status: 'loading',
       });
@@ -226,10 +229,11 @@ describe('Navigation Component', () => {
         name: 'John Doe',
         email: 'john@example.com',
       },
+      expires: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
     };
 
     beforeEach(() => {
-      useSession.mockReturnValue({
+      mockUseSession.mockReturnValue({
         data: mockSession,
         status: 'authenticated',
       });

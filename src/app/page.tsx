@@ -54,12 +54,9 @@ const SAMPLE_MEETING_CONTEXT = {
 };
 
 const DEFAULT_AUTOMATION_SETTINGS = {
-  maxPosts: 3,
-  includeHashtags: true,
-  includeEmojis: false,
-  tone: ContentTone.PROFESSIONAL,
-  length: ContentLength.MEDIUM,
-  publishImmediately: false,
+  autoPublish: false,
+  requireApproval: true,
+  notifyOnGeneration: false,
   scheduleDelay: 0,
 };
 
@@ -68,7 +65,7 @@ const DEFAULT_AUTOMATION_SETTINGS = {
 // ============================================================================
 
 export default function HomePage() {
-  const { data: session } = useSession();
+  const { data: session, status } = useSession();
   const [transcript, setTranscript] = useState(SAMPLE_TRANSCRIPT);
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedPosts, setGeneratedPosts] = useState<GeneratePostsResponse | null>(null);
@@ -82,6 +79,24 @@ export default function HomePage() {
   const [activeTab, setActiveTab] = useState<'posts' | 'email'>('posts');
   const [error, setError] = useState<string | null>(null);
 
+  // Show loading state while session is being determined
+  if (status === 'loading') {
+    return (
+      <>
+        <Navigation />
+        <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 py-8 px-4">
+          <div className="max-w-6xl mx-auto">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-blue-600 mx-auto mb-4"></div>
+              <h2 className="text-2xl font-semibold text-gray-700 mb-2">Loading...</h2>
+              <p className="text-gray-500">Please wait while we verify your authentication</p>
+            </div>
+          </div>
+        </div>
+      </>
+    );
+  }
+
 
   // Handle post generation
   const handleGeneratePosts = async () => {
@@ -93,6 +108,7 @@ export default function HomePage() {
 
     setIsGenerating(true);
     setError(null);
+    setActiveTab('posts'); // Switch to posts tab
 
     try {
       const request: GeneratePostsRequest = {
@@ -143,6 +159,7 @@ export default function HomePage() {
 
     setIsGenerating(true);
     setError(null);
+    setActiveTab('email'); // Switch to email tab
 
     try {
       const response = await fetch('/api/generate-email', {
@@ -229,16 +246,30 @@ export default function HomePage() {
         <div className="max-w-6xl mx-auto">
           {/* Header */}
           <div className="text-center mb-8">
-            <h1 className="text-4xl font-bold text-gray-900 mb-4">
+            <h1 className="text-5xl font-bold text-gray-900 mb-4">
               🎯 Post-Meeting Social Content Generator
             </h1>
-            <p className="text-xl text-gray-600 max-w-3xl mx-auto">
+            <p className="text-xl text-gray-600 max-w-3xl mx-auto mb-6">
               Transform your meeting transcripts into engaging social media posts and professional
-              follow-up emails using AI
+              follow-up emails using AI. Perfect for financial advisors, consultants, and professionals.
             </p>
-            <div className="mt-4 inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800">
-              ✅ Phase 1: Core AI Functionality Demo
+            
+            {/* Feature badges */}
+            <div className="flex flex-wrap justify-center gap-3 mb-6">
+              <div className="inline-flex items-center px-4 py-2 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
+                🤖 AI-Powered Content Generation
+              </div>
+              <div className="inline-flex items-center px-4 py-2 rounded-full text-sm font-medium bg-green-100 text-green-800">
+                📱 Social Media Ready
+              </div>
+              <div className="inline-flex items-center px-4 py-2 rounded-full text-sm font-medium bg-purple-100 text-purple-800">
+                📧 Professional Follow-ups
+              </div>
+              <div className="inline-flex items-center px-4 py-2 rounded-full text-sm font-medium bg-orange-100 text-orange-800">
+                🔗 Google Calendar Integration
+              </div>
             </div>
+
             {session && (
               <div className="mt-4 text-sm text-gray-600">
                 Welcome back, <strong>{session.user?.name}</strong>! Ready to generate some content?
@@ -290,7 +321,7 @@ export default function HomePage() {
               </div>
 
               {/* Action Buttons */}
-              <div className="flex gap-4">
+              <div className="flex flex-col sm:flex-row gap-4">
                 <button
                   onClick={() => {
                     if (!session?.user) {
@@ -301,17 +332,23 @@ export default function HomePage() {
                     void handleGeneratePosts();
                   }}
                   disabled={isGenerating || !transcript.trim()}
-                  className="flex-1 bg-blue-600 text-white px-6 py-3 rounded-lg font-medium hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  className="flex-1 bg-gradient-to-r from-blue-600 to-blue-700 text-white px-8 py-4 rounded-xl font-semibold hover:from-blue-700 hover:to-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 transform hover:scale-105 shadow-lg"
                 >
                   {isGenerating && activeTab === 'posts' ? (
                     <>
-                      <span className="inline-block animate-spin mr-2">⏳</span>
+                      <span className="inline-block animate-spin mr-3">⏳</span>
                       Generating Posts...
                     </>
                   ) : !session?.user ? (
-                    '🚀 Sign In to Generate Posts'
+                    <>
+                      <span className="mr-2">🚀</span>
+                      Sign In to Generate Posts
+                    </>
                   ) : (
-                    '🚀 Generate Social Posts'
+                    <>
+                      <span className="mr-2">🚀</span>
+                      Generate Social Posts
+                    </>
                   )}
                 </button>
 
@@ -325,17 +362,23 @@ export default function HomePage() {
                     void handleGenerateEmail();
                   }}
                   disabled={isGenerating || !transcript.trim()}
-                  className="flex-1 bg-green-600 text-white px-6 py-3 rounded-lg font-medium hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  className="flex-1 bg-gradient-to-r from-green-600 to-green-700 text-white px-8 py-4 rounded-xl font-semibold hover:from-green-700 hover:to-green-800 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 transform hover:scale-105 shadow-lg"
                 >
                   {isGenerating && activeTab === 'email' ? (
                     <>
-                      <span className="inline-block animate-spin mr-2">⏳</span>
+                      <span className="inline-block animate-spin mr-3">⏳</span>
                       Generating Email...
                     </>
                   ) : !session?.user ? (
-                    '📧 Sign In to Generate Email'
+                    <>
+                      <span className="mr-2">📧</span>
+                      Sign In to Generate Email
+                    </>
                   ) : (
-                    '📧 Generate Follow-up Email'
+                    <>
+                      <span className="mr-2">📧</span>
+                      Generate Follow-up Email
+                    </>
                   )}
                 </button>
               </div>
@@ -343,29 +386,31 @@ export default function HomePage() {
 
             {/* Output Section */}
             <div className="bg-white rounded-xl shadow-lg p-6">
-              <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center justify-between mb-6">
                 <h2 className="text-2xl font-semibold text-gray-800">🎨 Generated Content</h2>
 
                 {/* Tab Buttons */}
-                <div className="flex rounded-lg bg-gray-100 p-1">
+                <div className="flex rounded-xl bg-gray-100 p-1 shadow-inner">
                   <button
                     onClick={() => setActiveTab('posts')}
-                    className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
+                    className={`px-6 py-3 text-sm font-semibold rounded-lg transition-all duration-200 ${
                       activeTab === 'posts'
-                        ? 'bg-white text-blue-600 shadow-sm'
-                        : 'text-gray-500 hover:text-gray-700'
+                        ? 'bg-white text-blue-600 shadow-md transform scale-105'
+                        : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
                     }`}
                   >
+                    <span className="mr-2">📱</span>
                     Social Posts
                   </button>
                   <button
                     onClick={() => setActiveTab('email')}
-                    className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
+                    className={`px-6 py-3 text-sm font-semibold rounded-lg transition-all duration-200 ${
                       activeTab === 'email'
-                        ? 'bg-white text-green-600 shadow-sm'
-                        : 'text-gray-500 hover:text-gray-700'
+                        ? 'bg-white text-green-600 shadow-md transform scale-105'
+                        : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
                     }`}
                   >
+                    <span className="mr-2">📧</span>
                     Follow-up Email
                   </button>
                 </div>
@@ -389,7 +434,7 @@ export default function HomePage() {
                     <>
                       <div className="text-sm text-gray-500 mb-4">
                         Generated {generatedPosts.posts.length} posts in{' '}
-                        {generatedPosts.metadata.processingTimeMs}ms
+                        {generatedPosts.metadata.processingTime}ms
                         {generatedPosts.metadata.model.includes('mock') && (
                           <span className="ml-2 px-2 py-1 bg-yellow-100 text-yellow-800 rounded tex</div>t-xs">
                             Using Mock Data
@@ -445,8 +490,12 @@ export default function HomePage() {
                     </>
                   ) : (
                     <div className="text-center py-12 text-gray-500">
-                      <div className="text-4xl mb-4">📱</div>
-                      <p>Click &quot;Generate Social Posts&quot; to see AI-generated content</p>
+                      <div className="text-6xl mb-6">📱</div>
+                      <h3 className="text-lg font-semibold text-gray-700 mb-2">Ready to Generate Social Posts?</h3>
+                      <p className="text-gray-500 mb-4">Click the "Generate Social Posts" button to see AI-generated content for LinkedIn, Facebook, and more!</p>
+                      <div className="inline-flex items-center px-4 py-2 bg-blue-50 text-blue-600 rounded-lg text-sm font-medium">
+                        💡 Tip: The AI will create platform-specific content with hashtags and engagement optimization
+                      </div>
                     </div>
                   )}
                 </div>
@@ -513,8 +562,12 @@ export default function HomePage() {
                     </div>
                   ) : (
                     <div className="text-center py-12 text-gray-500">
-                      <div className="text-4xl mb-4">📧</div>
-                      <p>Click &quot;Generate Follow-up Email&quot; to see AI-generated content</p>
+                      <div className="text-6xl mb-6">📧</div>
+                      <h3 className="text-lg font-semibold text-gray-700 mb-2">Ready to Generate Follow-up Email?</h3>
+                      <p className="text-gray-500 mb-4">Click the "Generate Follow-up Email" button to see AI-generated professional follow-up content!</p>
+                      <div className="inline-flex items-center px-4 py-2 bg-green-50 text-green-600 rounded-lg text-sm font-medium">
+                        💡 Tip: The AI will create personalized emails with action items and next steps
+                      </div>
                     </div>
                   )}
                 </div>
@@ -525,10 +578,10 @@ export default function HomePage() {
           {/* Footer */}
           <div className="text-center mt-12 text-gray-500">
             <p className="text-sm">
-              Built with ❤️ for Jump.ai Challenge • Phase 1: Core AI Functionality Demo
+              Built with ❤️ for Jump.ai Challenge • Complete Post-Meeting Social Media Content Generator
             </p>
             <p className="text-xs mt-1">
-              Next: Google Calendar Integration, Recall.ai Bot Management, Social Media Publishing
+              ✅ Google Calendar Integration • ✅ Recall.ai Bot Management • ✅ Social Media Publishing • ✅ AI Content Generation
             </p>
           </div>
         </div>

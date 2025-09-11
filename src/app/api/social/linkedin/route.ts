@@ -22,6 +22,7 @@ import {
   LinkedInRateLimiter,
 } from '@/lib/linkedin';
 import { storeSocialToken, getSocialToken } from '@/lib/social-tokens';
+import { SocialPlatform } from '@/types/master-interfaces';
 
 // ============================================================================
 // API ROUTE HANDLERS
@@ -92,51 +93,45 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    // Check authentication
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-call
     const session = (await auth()) as Session | null;
     if (!session?.user?.email) {
       return NextResponse.json(
-        {
-          success: false,
-          error: {
-            message: 'Authentication required',
-            code: 'UNAUTHORIZED',
-            timestamp: new Date().toISOString(),
-          },
-        },
+        { success: false, error: { message: 'Authentication required' } },
         { status: 401 }
       );
     }
 
     const body = (await request.json()) as {
-      action: 'publish' | 'validate' | 'optimize';
-      content: string;
+      action: string;
+      content?: string;
       hashtags?: string[];
       linkUrl?: string;
-      meetingId?: string;
+      imageUrl?: string;
     };
-    const { action, ...params } = body;
+
+    const { action, content, hashtags, linkUrl, imageUrl } = body;
 
     switch (action) {
-      case 'publish': {
-        return await handlePublishPost(params, session.user.email);
-      }
+      case 'post':
+        return await handlePostContent(session.user.email, {
+          content: content || '',
+          hashtags: hashtags || [],
+          linkUrl: linkUrl || '',
+          imageUrl: imageUrl || '',
+        });
 
-      case 'validate': {
-        return await handleValidateContent(params);
-      }
+      case 'optimize':
+        return await handleOptimizeContent(content || '');
 
-      case 'optimize': {
-        return await handleOptimizeContent(params);
-      }
+      case 'validate':
+        return await handleValidateContent(content || '');
 
       default:
         return NextResponse.json(
           {
             success: false,
             error: {
-              message: `Unknown action: ${action}`,
+              message: 'Invalid action parameter',
               code: 'INVALID_ACTION',
               timestamp: new Date().toISOString(),
             },
@@ -145,14 +140,14 @@ export async function POST(request: NextRequest) {
         );
     }
   } catch (error) {
-    console.error('LinkedIn POST API error:', error);
+    console.error('LinkedIn API error:', error);
 
     return NextResponse.json(
       {
         success: false,
         error: {
-          message: error instanceof Error ? error.message : 'Failed to process LinkedIn request',
-          code: 'LINKEDIN_POST_ERROR',
+          message: error instanceof Error ? error.message : 'LinkedIn API error',
+          code: 'LINKEDIN_API_ERROR',
           timestamp: new Date().toISOString(),
         },
       },
@@ -174,23 +169,12 @@ async function handleOAuthCallback(code: string, state: string) {
     const useMockData = !process.env.LINKEDIN_CLIENT_ID || process.env.NODE_ENV === 'development';
 
     if (useMockData) {
-      return NextResponse.json({
-        success: true,
-        data: {
-          profile: MOCK_LINKEDIN_PROFILE,
-          token: {
-            accessToken: 'mock-linkedin-token',
-            expiresIn: 5184000, // 60 days
-            scope: 'openid profile email w_member_social',
-          },
-          mock: true,
-        },
-        metadata: {
-          timestamp: new Date().toISOString(),
-          requestId: crypto.randomUUID(),
-          usingMockData: true,
-        },
-      });
+      // Redirect to settings page with success status
+      const redirectUrl = new URL('/settings', process.env.NEXTAUTH_URL || 'http://localhost:3000');
+      redirectUrl.searchParams.set('oauth_success', 'true');
+      redirectUrl.searchParams.set('platform', 'linkedin');
+      
+      return NextResponse.redirect(redirectUrl.toString());
     }
 
     // Real OAuth flow
@@ -203,23 +187,91 @@ async function handleOAuthCallback(code: string, state: string) {
     // For now, we'll store it with a placeholder user ID
     const userId = 'oauth-callback-user'; // TODO: Get actual user ID from session or state
 
-    await storeSocialToken(userId, 'LINKEDIN', {
+    await storeSocialToken(userId, SocialPlatform.LINKEDIN, {
       accessToken: tokenData.accessToken,
       refreshToken: tokenData.refreshToken,
       expiresIn: tokenData.expiresIn,
       scope: tokenData.scope.split(' '),
       platformDetails: {
         profileId: profile.id,
-        profileName: profile.name,
+        profileName: `${profile.firstName} ${profile.lastName}`,
         profileEmail: profile.email,
       },
     });
+
+    // Redirect to settings page with success status
+    const redirectUrl = new URL('/settings', process.env.NEXTAUTH_URL || 'http://localhost:3000');
+    redirectUrl.searchParams.set('oauth_success', 'true');
+    redirectUrl.searchParams.set('platform', 'linkedin');
+    
+    return NextResponse.redirect(redirectUrl.toString());
+  } catch (error) {
+    console.error('LinkedIn OAuth callback error:', error);
+
+    // Redirect to settings page with error status
+    const redirectUrl = new URL('/settings', process.env.NEXTAUTH_URL || 'http://localhost:3000');
+    redirectUrl.searchParams.set('oauth_error', 'true');
+    redirectUrl.searchParams.set('platform', 'linkedin');
+    redirectUrl.searchParams.set('error', error instanceof Error ? error.message : 'OAuth callback failed');
+    
+    return NextResponse.redirect(redirectUrl.toString());
+  }
+}
+
+/**
+ * Handles getting LinkedIn profile information
+ */
+async function handleGetProfile(request: NextRequest) {
+  try {
+    const session = (await auth()) as Session | null;
+    if (!session?.user?.email) {
+      return NextResponse.json(
+        { success: false, error: { message: 'Authentication required' } },
+        { status: 401 }
+      );
+    }
+
+    // Get stored token
+    const token = await getSocialToken(session.user.email, SocialPlatform.LINKEDIN);
+    if (!token) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: {
+            message: 'LinkedIn not connected. Please connect your LinkedIn account first.',
+            code: 'LINKEDIN_NOT_CONNECTED',
+            timestamp: new Date().toISOString(),
+          },
+        },
+        { status: 400 }
+      );
+    }
+
+    // For demo purposes, use mock data
+    const useMockData = !process.env.LINKEDIN_CLIENT_ID || process.env.NODE_ENV === 'development';
+
+    if (useMockData) {
+      return NextResponse.json({
+        success: true,
+        data: {
+          profile: MOCK_LINKEDIN_PROFILE,
+          mock: true,
+        },
+        metadata: {
+          timestamp: new Date().toISOString(),
+          requestId: crypto.randomUUID(),
+          usingMockData: true,
+        },
+      });
+    }
+
+    // Real API call
+    const profile = await getLinkedInProfile(token.accessToken);
 
     return NextResponse.json({
       success: true,
       data: {
         profile,
-        token: tokenData,
         mock: false,
       },
       metadata: {
@@ -229,14 +281,14 @@ async function handleOAuthCallback(code: string, state: string) {
       },
     });
   } catch (error) {
-    console.error('LinkedIn OAuth callback error:', error);
+    console.error('LinkedIn profile fetch error:', error);
 
     return NextResponse.json(
       {
         success: false,
         error: {
-          message: error instanceof Error ? error.message : 'OAuth callback failed',
-          code: 'OAUTH_CALLBACK_ERROR',
+          message: error instanceof Error ? error.message : 'Failed to fetch LinkedIn profile',
+          code: 'LINKEDIN_PROFILE_ERROR',
           timestamp: new Date().toISOString(),
         },
       },
@@ -246,172 +298,79 @@ async function handleOAuthCallback(code: string, state: string) {
 }
 
 /**
- * Handles getting LinkedIn profile
+ * Handles posting content to LinkedIn
  */
-async function handleGetProfile(request: NextRequest) {
-  const searchParams = request.nextUrl.searchParams;
-  const useMockData = searchParams.get('mock') === 'true' || !process.env.LINKEDIN_CLIENT_ID;
-
-  if (useMockData) {
-    return NextResponse.json({
-      success: true,
-      data: MOCK_LINKEDIN_PROFILE,
-      metadata: {
-        timestamp: new Date().toISOString(),
-        requestId: crypto.randomUUID(),
-        usingMockData: true,
-      },
-    });
-  }
-
-  // Real profile fetching would require stored access token
-  return NextResponse.json(
-    {
-      success: false,
-      error: {
-        message: 'LinkedIn profile access not implemented yet',
-        code: 'FEATURE_NOT_IMPLEMENTED',
-        timestamp: new Date().toISOString(),
-      },
-    },
-    { status: 501 }
-  );
-}
-
-/**
- * Handles publishing content to LinkedIn
- */
-async function handlePublishPost(
-  params: {
+async function handlePostContent(
+  userId: string,
+  content: {
     content: string;
-    hashtags?: string[];
-    linkUrl?: string;
-    meetingId?: string;
-  },
-  userId: string
+    hashtags: string[];
+    linkUrl: string;
+    imageUrl: string;
+  }
 ) {
-  const { content, hashtags = [] } = params;
-
-  // Rate limiting check
-  const rateLimiter = LinkedInRateLimiter.getInstance();
-  if (!rateLimiter.canMakeRequest(userId)) {
-    const resetTime = rateLimiter.getResetTime(userId);
-
-    return NextResponse.json(
-      {
-        success: false,
-        error: {
-          message: 'Rate limit exceeded for LinkedIn posting',
-          code: 'RATE_LIMIT_EXCEEDED',
-          timestamp: new Date().toISOString(),
-          retryAfter: Math.ceil(resetTime / 1000), // in seconds
-        },
-      },
-      { status: 429 }
-    );
-  }
-
-  // Content validation
-  const validation = validateLinkedInContent(content);
-  if (!validation.isValid) {
-    return NextResponse.json(
-      {
-        success: false,
-        error: {
-          message: `Content validation failed: ${validation.issues.join(', ')}`,
-          code: 'CONTENT_VALIDATION_FAILED',
-          details: validation.issues,
-          riskScore: validation.riskScore,
-          timestamp: new Date().toISOString(),
-        },
-      },
-      { status: 400 }
-    );
-  }
-
-  // Content optimization
-  const optimized = optimizeContentForLinkedIn({
-    text: content,
-    hashtags,
-    platform: 'linkedin',
-  });
-
-  // Always use mock publishing for this project (auth is real, publishing is mocked)
-  const useMockData = true;
-
-  if (useMockData) {
-    const mockResult = await createMockLinkedInPost(optimized.optimizedText, optimized.hashtags);
-    rateLimiter.recordRequest(userId);
-
-    return NextResponse.json({
-      success: true,
-      data: {
-        postId: mockResult.postId,
-        postUrl: mockResult.postUrl,
-        publishedAt: mockResult.publishedAt,
-        engagement: mockResult.engagement,
-        optimizations: {
-          characterCount: optimized.characterCount,
-          warnings: optimized.warnings,
-        },
-        validation: {
-          riskScore: validation.riskScore,
-          issues: validation.issues,
-        },
-        mock: true,
-      },
-      metadata: {
-        timestamp: new Date().toISOString(),
-        requestId: crypto.randomUUID(),
-        usingMockData: true,
-        note: 'Publishing is mocked for this project - authentication is real',
-      },
-    });
-  }
-
-  // Real LinkedIn posting
   try {
-    // Get stored LinkedIn access token for user
-    const { getLinkedInToken } = await import('@/lib/persistent-token-store');
-    const linkedinToken = await getLinkedInToken(userId);
-    const accessToken = linkedinToken?.accessToken;
-
-    if (!accessToken) {
+    // Get stored token
+    const token = await getSocialToken(userId, SocialPlatform.LINKEDIN);
+    if (!token) {
       return NextResponse.json(
         {
           success: false,
           error: {
-            message: 'LinkedIn account not connected. Please authenticate first.',
+            message: 'LinkedIn not connected. Please connect your LinkedIn account first.',
             code: 'LINKEDIN_NOT_CONNECTED',
             timestamp: new Date().toISOString(),
           },
         },
-        { status: 401 }
+        { status: 400 }
       );
     }
 
-    const postResult = await postToLinkedIn(accessToken, {
-      text: optimized.optimizedText,
-      hashtags: optimized.hashtags,
-      linkUrl: params.linkUrl,
-    });
+    // Check rate limits
+    const rateLimiter = new LinkedInRateLimiter();
+    if (!rateLimiter.canPost()) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: {
+            message: 'Rate limit exceeded. Please try again later.',
+            code: 'RATE_LIMIT_EXCEEDED',
+            timestamp: new Date().toISOString(),
+          },
+        },
+        { status: 429 }
+      );
+    }
 
-    rateLimiter.recordRequest(userId);
+    // For demo purposes, use mock data
+    const useMockData = !process.env.LINKEDIN_CLIENT_ID || process.env.NODE_ENV === 'development';
+
+    if (useMockData) {
+      const mockPost = createMockLinkedInPost(content);
+      rateLimiter.recordPost();
+
+      return NextResponse.json({
+        success: true,
+        data: {
+          post: mockPost,
+          mock: true,
+        },
+        metadata: {
+          timestamp: new Date().toISOString(),
+          requestId: crypto.randomUUID(),
+          usingMockData: true,
+        },
+      });
+    }
+
+    // Real API call
+    const postResult = await postToLinkedIn(token.accessToken, content);
+    rateLimiter.recordPost();
 
     return NextResponse.json({
       success: true,
       data: {
-        postId: postResult.postId,
-        postUrl: postResult.postUrl,
-        publishedAt: postResult.publishedAt,
-        optimizations: {
-          characterCount: optimized.characterCount,
-          warnings: optimized.warnings,
-        },
-        validation: {
-          riskScore: validation.riskScore,
-          issues: validation.issues,
-        },
+        post: postResult,
         mock: false,
       },
       metadata: {
@@ -421,15 +380,14 @@ async function handlePublishPost(
       },
     });
   } catch (error) {
-    console.error('LinkedIn posting error:', error);
+    console.error('LinkedIn post error:', error);
 
     return NextResponse.json(
       {
         success: false,
         error: {
-          message: 'Failed to publish to LinkedIn',
-          code: 'LINKEDIN_PUBLISH_FAILED',
-          details: error instanceof Error ? error.message : 'Unknown error',
+          message: error instanceof Error ? error.message : 'Failed to post to LinkedIn',
+          code: 'LINKEDIN_POST_ERROR',
           timestamp: new Date().toISOString(),
         },
       },
@@ -439,37 +397,78 @@ async function handlePublishPost(
 }
 
 /**
- * Handles content validation
+ * Handles content optimization for LinkedIn
  */
-async function handleValidateContent(params: { content: string }) {
-  const validation = validateLinkedInContent(params.content);
+async function handleOptimizeContent(content: string) {
+  try {
+    const optimizedContent = await optimizeContentForLinkedIn(content);
 
-  return NextResponse.json({
-    success: true,
-    data: validation,
-    metadata: {
-      timestamp: new Date().toISOString(),
-      requestId: crypto.randomUUID(),
-    },
-  });
+    return NextResponse.json({
+      success: true,
+      data: {
+        originalContent: content,
+        optimizedContent,
+        improvements: [
+          'Added professional tone',
+          'Optimized for LinkedIn algorithm',
+          'Enhanced engagement potential',
+        ],
+      },
+      metadata: {
+        timestamp: new Date().toISOString(),
+        requestId: crypto.randomUUID(),
+      },
+    });
+  } catch (error) {
+    console.error('LinkedIn content optimization error:', error);
+
+    return NextResponse.json(
+      {
+        success: false,
+        error: {
+          message: error instanceof Error ? error.message : 'Failed to optimize content',
+          code: 'LINKEDIN_OPTIMIZATION_ERROR',
+          timestamp: new Date().toISOString(),
+        },
+      },
+      { status: 500 }
+    );
+  }
 }
 
 /**
- * Handles content optimization
+ * Handles content validation for LinkedIn
  */
-async function handleOptimizeContent(params: { content: string; hashtags?: string[] }) {
-  const optimized = optimizeContentForLinkedIn({
-    text: params.content,
-    hashtags: params.hashtags || [],
-    platform: 'linkedin',
-  });
+async function handleValidateContent(content: string) {
+  try {
+    const validation = await validateLinkedInContent(content);
 
-  return NextResponse.json({
-    success: true,
-    data: optimized,
-    metadata: {
-      timestamp: new Date().toISOString(),
-      requestId: crypto.randomUUID(),
-    },
-  });
+    return NextResponse.json({
+      success: true,
+      data: {
+        content,
+        validation,
+        isValid: validation.isValid,
+        suggestions: validation.suggestions,
+      },
+      metadata: {
+        timestamp: new Date().toISOString(),
+        requestId: crypto.randomUUID(),
+      },
+    });
+  } catch (error) {
+    console.error('LinkedIn content validation error:', error);
+
+    return NextResponse.json(
+      {
+        success: false,
+        error: {
+          message: error instanceof Error ? error.message : 'Failed to validate content',
+          code: 'LINKEDIN_VALIDATION_ERROR',
+          timestamp: new Date().toISOString(),
+        },
+      },
+      { status: 500 }
+    );
+  }
 }

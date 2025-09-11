@@ -8,7 +8,7 @@
 
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
-import { auth } from '@/lib/auth';
+import { auth } from '@/lib/auth-wrapper';
 import type { Session } from 'next-auth';
 import {
   generateFacebookAuthUrl,
@@ -20,7 +20,8 @@ import {
   MOCK_FACEBOOK_PROFILE,
   FacebookRateLimiter,
 } from '@/lib/facebook';
-import { storeSocialToken, getSocialToken } from '@/lib/social-tokens';
+import { storeSocialToken, getSocialToken, hasValidToken } from '@/lib/social-tokens';
+import { postToFacebook } from '@/lib/facebook';
 import { SocialPlatform } from '@/types/master-interfaces';
 
 // ============================================================================
@@ -57,39 +58,9 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    // Get connection status
-    if (action === 'status') {
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-call
-      const session = (await auth()) as Session | null;
-      if (!session?.user?.id) {
-        return NextResponse.json(
-          {
-            success: false,
-            error: {
-              message: 'Authentication required',
-              code: 'UNAUTHORIZED',
-              timestamp: new Date().toISOString(),
-            },
-          },
-          { status: 401 }
-        );
-      }
-
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-call
-      const hasAccess = (await hasValidToken(session.user.id, SocialPlatform.FACEBOOK)) as boolean;
-
-      return NextResponse.json({
-        success: true,
-        data: {
-          connected: hasAccess,
-          platform: 'FACEBOOK',
-          userId: session.user.id,
-        },
-        metadata: {
-          timestamp: new Date().toISOString(),
-          requestId: crypto.randomUUID(),
-        },
-      });
+    // Get profile information
+    if (action === 'profile') {
+      return await handleGetProfile(request);
     }
 
     return NextResponse.json(
@@ -122,51 +93,45 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    // Check authentication
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-call
     const session = (await auth()) as Session | null;
-    if (!session?.user?.id) {
+    if (!session?.user?.email) {
       return NextResponse.json(
-        {
-          success: false,
-          error: {
-            message: 'Authentication required',
-            code: 'UNAUTHORIZED',
-            timestamp: new Date().toISOString(),
-          },
-        },
+        { success: false, error: { message: 'Authentication required' } },
         { status: 401 }
       );
     }
 
     const body = (await request.json()) as {
-      action: 'publish' | 'validate' | 'optimize';
-      content: string;
+      action: string;
+      content?: string;
       hashtags?: string[];
       linkUrl?: string;
-      meetingId?: string;
+      imageUrl?: string;
     };
-    const { action, ...params } = body;
+
+    const { action, content, hashtags, linkUrl, imageUrl } = body;
 
     switch (action) {
-      case 'publish': {
-        return await handlePublishPost(params, session.user.id);
-      }
+      case 'post':
+        return await handlePostContent(session.user.email, {
+          content: content || '',
+          hashtags: hashtags || [],
+          linkUrl: linkUrl || '',
+          imageUrl: imageUrl || '',
+        });
 
-      case 'validate': {
-        return await handleValidateContent(params);
-      }
+      case 'optimize':
+        return await handleOptimizeContent(content || '');
 
-      case 'optimize': {
-        return await handleOptimizeContent(params);
-      }
+      case 'validate':
+        return await handleValidateContent(content || '');
 
       default:
         return NextResponse.json(
           {
             success: false,
             error: {
-              message: `Unknown action: ${action}`,
+              message: 'Invalid action parameter',
               code: 'INVALID_ACTION',
               timestamp: new Date().toISOString(),
             },
@@ -175,14 +140,14 @@ export async function POST(request: NextRequest) {
         );
     }
   } catch (error) {
-    console.error('Facebook POST API error:', error);
+    console.error('Facebook API error:', error);
 
     return NextResponse.json(
       {
         success: false,
         error: {
-          message: error instanceof Error ? error.message : 'Failed to process Facebook request',
-          code: 'FACEBOOK_POST_ERROR',
+          message: error instanceof Error ? error.message : 'Facebook API error',
+          code: 'FACEBOOK_API_ERROR',
           timestamp: new Date().toISOString(),
         },
       },
@@ -192,32 +157,24 @@ export async function POST(request: NextRequest) {
 }
 
 // ============================================================================
-// OAUTH CALLBACK HANDLER
+// HANDLER FUNCTIONS
 // ============================================================================
 
+/**
+ * Handles OAuth callback from Facebook
+ */
 async function handleOAuthCallback(code: string, state: string) {
   try {
     // For demo purposes, use mock data
     const useMockData = !process.env.FACEBOOK_CLIENT_ID || process.env.NODE_ENV === 'development';
 
     if (useMockData) {
-      return NextResponse.json({
-        success: true,
-        data: {
-          profile: MOCK_FACEBOOK_PROFILE,
-          token: {
-            accessToken: 'mock-facebook-token',
-            expiresIn: 5184000, // 60 days
-            scope: 'public_profile email pages_manage_posts pages_read_engagement',
-          },
-          mock: true,
-        },
-        metadata: {
-          timestamp: new Date().toISOString(),
-          requestId: crypto.randomUUID(),
-          usingMockData: true,
-        },
-      });
+      // Redirect to settings page with success status
+      const redirectUrl = new URL('/settings', process.env.NEXTAUTH_URL || 'http://localhost:3000');
+      redirectUrl.searchParams.set('oauth_success', 'true');
+      redirectUrl.searchParams.set('platform', 'facebook');
+      
+      return NextResponse.redirect(redirectUrl.toString());
     }
 
     // Real OAuth flow
@@ -239,175 +196,79 @@ async function handleOAuthCallback(code: string, state: string) {
       },
     });
 
-    return NextResponse.json({
-      success: true,
-      data: {
-        profile,
-        token: tokenData,
-        mock: false,
-      },
-      metadata: {
-        timestamp: new Date().toISOString(),
-        requestId: crypto.randomUUID(),
-        usingMockData: false,
-      },
-    });
+    // Redirect to settings page with success status
+    const redirectUrl = new URL('/settings', process.env.NEXTAUTH_URL || 'http://localhost:3000');
+    redirectUrl.searchParams.set('oauth_success', 'true');
+    redirectUrl.searchParams.set('platform', 'facebook');
+    
+    return NextResponse.redirect(redirectUrl.toString());
   } catch (error) {
     console.error('Facebook OAuth callback error:', error);
 
-    return NextResponse.json(
-      {
-        success: false,
-        error: {
-          message: error instanceof Error ? error.message : 'OAuth callback failed',
-          code: 'OAUTH_CALLBACK_ERROR',
-          timestamp: new Date().toISOString(),
-        },
-      },
-      { status: 500 }
-    );
+    // Redirect to settings page with error status
+    const redirectUrl = new URL('/settings', process.env.NEXTAUTH_URL || 'http://localhost:3000');
+    redirectUrl.searchParams.set('oauth_error', 'true');
+    redirectUrl.searchParams.set('platform', 'facebook');
+    redirectUrl.searchParams.set('error', error instanceof Error ? error.message : 'OAuth callback failed');
+    
+    return NextResponse.redirect(redirectUrl.toString());
   }
 }
 
-// ============================================================================
-// CONTENT HANDLERS
-// ============================================================================
-
-async function handlePublishPost(
-  params: {
-    content: string;
-    hashtags?: string[];
-    linkUrl?: string;
-    meetingId?: string;
-  },
-  userId: string
-) {
-  const { content, hashtags = [] } = params;
-
-  // Rate limiting check
-  const rateLimiter = FacebookRateLimiter.getInstance();
-  if (!rateLimiter.canMakeRequest(userId)) {
-    const resetTime = rateLimiter.getResetTime(userId);
-
-    return NextResponse.json(
-      {
-        success: false,
-        error: {
-          message: 'Rate limit exceeded for Facebook posting',
-          code: 'RATE_LIMIT_EXCEEDED',
-          timestamp: new Date().toISOString(),
-          retryAfter: Math.ceil(resetTime / 1000), // in seconds
-        },
-      },
-      { status: 429 }
-    );
-  }
-
-  // Content validation
-  const validation = validateFacebookContent(content);
-  if (!validation.isValid) {
-    return NextResponse.json(
-      {
-        success: false,
-        error: {
-          message: 'Content validation failed',
-          code: 'CONTENT_VALIDATION_FAILED',
-          details: validation.issues,
-          riskScore: validation.riskScore,
-          timestamp: new Date().toISOString(),
-        },
-      },
-      { status: 400 }
-    );
-  }
-
-  // Content optimization
-  const optimized = optimizeContentForFacebook({
-    text: content,
-    hashtags,
-    platform: 'facebook',
-  });
-
-  // Check if we have Facebook credentials for real publishing
-  const useMockData = !process.env.FACEBOOK_CLIENT_ID || !process.env.FACEBOOK_CLIENT_SECRET;
-
-  if (useMockData) {
-    const mockResult = await createMockFacebookPost(optimized.optimizedText, optimized.hashtags);
-    rateLimiter.recordRequest(userId);
-
-    return NextResponse.json({
-      success: true,
-      data: {
-        postId: mockResult.postId,
-        postUrl: mockResult.postUrl,
-        publishedAt: mockResult.publishedAt,
-        engagement: mockResult.engagement,
-        optimizations: {
-          characterCount: optimized.characterCount,
-          warnings: optimized.warnings,
-        },
-        validation: {
-          riskScore: validation.riskScore,
-          issues: validation.issues,
-        },
-        mock: true,
-      },
-      metadata: {
-        timestamp: new Date().toISOString(),
-        requestId: crypto.randomUUID(),
-        usingMockData: true,
-      },
-    });
-  }
-
-  // Real Facebook posting
+/**
+ * Handles getting Facebook profile information
+ */
+async function handleGetProfile(request: NextRequest) {
   try {
-    // Get stored Facebook access token for user
-    const accessToken = await getSocialToken(userId, SocialPlatform.FACEBOOK);
-
-    if (!accessToken) {
+    const session = (await auth()) as Session | null;
+    if (!session?.user?.email) {
       return NextResponse.json(
-        {
-          success: false,
-          error: {
-            message: 'Facebook account not connected. Please authenticate first.',
-            code: 'FACEBOOK_NOT_CONNECTED',
-            timestamp: new Date().toISOString(),
-          },
-        },
+        { success: false, error: { message: 'Authentication required' } },
         { status: 401 }
       );
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-call
-    const postResult = (await postToFacebook(accessToken, {
-      text: optimized.optimizedText,
-      hashtags: optimized.hashtags,
-      linkUrl: params.linkUrl,
-    })) as {
-      success: boolean;
-      postId?: string;
-      postUrl?: string;
-      publishedAt?: string;
-      error?: string;
-    };
+    // Get stored token
+    const token = await getSocialToken(session.user.email, SocialPlatform.FACEBOOK);
+    if (!token) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: {
+            message: 'Facebook not connected. Please connect your Facebook account first.',
+            code: 'FACEBOOK_NOT_CONNECTED',
+            timestamp: new Date().toISOString(),
+          },
+        },
+        { status: 400 }
+      );
+    }
 
-    rateLimiter.recordRequest(userId);
+    // For demo purposes, use mock data
+    const useMockData = !process.env.FACEBOOK_CLIENT_ID || process.env.NODE_ENV === 'development';
+
+    if (useMockData) {
+      return NextResponse.json({
+        success: true,
+        data: {
+          profile: MOCK_FACEBOOK_PROFILE,
+          mock: true,
+        },
+        metadata: {
+          timestamp: new Date().toISOString(),
+          requestId: crypto.randomUUID(),
+          usingMockData: true,
+        },
+      });
+    }
+
+    // Real API call
+    const profile = await getFacebookProfile(token.accessToken);
 
     return NextResponse.json({
       success: true,
       data: {
-        postId: postResult.postId,
-        postUrl: postResult.postUrl,
-        publishedAt: postResult.publishedAt,
-        optimizations: {
-          characterCount: optimized.characterCount,
-          warnings: optimized.warnings,
-        },
-        validation: {
-          riskScore: validation.riskScore,
-          issues: validation.issues,
-        },
+        profile,
         mock: false,
       },
       metadata: {
@@ -417,15 +278,14 @@ async function handlePublishPost(
       },
     });
   } catch (error) {
-    console.error('Facebook posting error:', error);
+    console.error('Facebook profile fetch error:', error);
 
     return NextResponse.json(
       {
         success: false,
         error: {
-          message: 'Failed to publish to Facebook',
-          code: 'FACEBOOK_PUBLISH_FAILED',
-          details: error instanceof Error ? error.message : 'Unknown error',
+          message: error instanceof Error ? error.message : 'Failed to fetch Facebook profile',
+          code: 'FACEBOOK_PROFILE_ERROR',
           timestamp: new Date().toISOString(),
         },
       },
@@ -435,47 +295,177 @@ async function handlePublishPost(
 }
 
 /**
- * Handles content validation
+ * Handles posting content to Facebook
  */
-async function handleValidateContent(params: { content: string }) {
-  const validation = validateFacebookContent(params.content);
+async function handlePostContent(
+  userId: string,
+  content: {
+    content: string;
+    hashtags: string[];
+    linkUrl: string;
+    imageUrl: string;
+  }
+) {
+  try {
+    // Get stored token
+    const token = await getSocialToken(userId, SocialPlatform.FACEBOOK);
+    if (!token) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: {
+            message: 'Facebook not connected. Please connect your Facebook account first.',
+            code: 'FACEBOOK_NOT_CONNECTED',
+            timestamp: new Date().toISOString(),
+          },
+        },
+        { status: 400 }
+      );
+    }
 
-  return NextResponse.json({
-    success: true,
-    data: {
-      isValid: validation.isValid,
-      issues: validation.issues,
-      riskScore: validation.riskScore,
-      characterCount: params.content.length,
-    },
-    metadata: {
-      timestamp: new Date().toISOString(),
-      requestId: crypto.randomUUID(),
-    },
-  });
+    // Check rate limits
+    const rateLimiter = new FacebookRateLimiter();
+    if (!rateLimiter.canPost()) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: {
+            message: 'Rate limit exceeded. Please try again later.',
+            code: 'RATE_LIMIT_EXCEEDED',
+            timestamp: new Date().toISOString(),
+          },
+        },
+        { status: 429 }
+      );
+    }
+
+    // For demo purposes, use mock data
+    const useMockData = !process.env.FACEBOOK_CLIENT_ID || process.env.NODE_ENV === 'development';
+
+    if (useMockData) {
+      const mockPost = createMockFacebookPost(content);
+      rateLimiter.recordPost();
+
+      return NextResponse.json({
+        success: true,
+        data: {
+          post: mockPost,
+          mock: true,
+        },
+        metadata: {
+          timestamp: new Date().toISOString(),
+          requestId: crypto.randomUUID(),
+          usingMockData: true,
+        },
+      });
+    }
+
+    // Real API call
+    const postResult = await postToFacebook(token.accessToken, content);
+    rateLimiter.recordPost();
+
+    return NextResponse.json({
+      success: true,
+      data: {
+        post: postResult,
+        mock: false,
+      },
+      metadata: {
+        timestamp: new Date().toISOString(),
+        requestId: crypto.randomUUID(),
+        usingMockData: false,
+      },
+    });
+  } catch (error) {
+    console.error('Facebook post error:', error);
+
+    return NextResponse.json(
+      {
+        success: false,
+        error: {
+          message: error instanceof Error ? error.message : 'Failed to post to Facebook',
+          code: 'FACEBOOK_POST_ERROR',
+          timestamp: new Date().toISOString(),
+        },
+      },
+      { status: 500 }
+    );
+  }
 }
 
 /**
- * Handles content optimization
+ * Handles content optimization for Facebook
  */
-async function handleOptimizeContent(params: { content: string; hashtags?: string[] }) {
-  const optimized = optimizeContentForFacebook({
-    text: params.content,
-    hashtags: params.hashtags || [],
-    platform: 'facebook',
-  });
+async function handleOptimizeContent(content: string) {
+  try {
+    const optimizedContent = await optimizeContentForFacebook(content);
 
-  return NextResponse.json({
-    success: true,
-    data: {
-      optimizedText: optimized.optimizedText,
-      hashtags: optimized.hashtags,
-      characterCount: optimized.characterCount,
-      warnings: optimized.warnings,
-    },
-    metadata: {
-      timestamp: new Date().toISOString(),
-      requestId: crypto.randomUUID(),
-    },
-  });
+    return NextResponse.json({
+      success: true,
+      data: {
+        originalContent: content,
+        optimizedContent,
+        improvements: [
+          'Added engaging tone',
+          'Optimized for Facebook algorithm',
+          'Enhanced shareability',
+        ],
+      },
+      metadata: {
+        timestamp: new Date().toISOString(),
+        requestId: crypto.randomUUID(),
+      },
+    });
+  } catch (error) {
+    console.error('Facebook content optimization error:', error);
+
+    return NextResponse.json(
+      {
+        success: false,
+        error: {
+          message: error instanceof Error ? error.message : 'Failed to optimize content',
+          code: 'FACEBOOK_OPTIMIZATION_ERROR',
+          timestamp: new Date().toISOString(),
+        },
+      },
+      { status: 500 }
+    );
+  }
+}
+
+/**
+ * Handles content validation for Facebook
+ */
+async function handleValidateContent(content: string) {
+  try {
+    const validation = await validateFacebookContent(content);
+
+    return NextResponse.json({
+      success: true,
+      data: {
+        content,
+        validation,
+        isValid: validation.isValid,
+        suggestions: validation.suggestions,
+      },
+      metadata: {
+        timestamp: new Date().toISOString(),
+        requestId: crypto.randomUUID(),
+      },
+    });
+  } catch (error) {
+    console.error('Facebook content validation error:', error);
+
+    return NextResponse.json(
+      {
+        success: false,
+        error: {
+          message: error instanceof Error ? error.message : 'Failed to validate content',
+          code: 'FACEBOOK_VALIDATION_ERROR',
+          timestamp: new Date().toISOString(),
+        },
+      },
+      { status: 500 }
+    );
+  }
 }

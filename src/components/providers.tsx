@@ -11,5 +11,5 @@ import { SessionProvider } from 'next-auth/react';
 import type { ProvidersProps } from '@/types';
 
 export function Providers({ children, session }: ProvidersProps) {
-  return <SessionProvider session={session || null}>{children}</SessionProvider>;
+  return <SessionProvider session={session || null}>{children as React.ReactNode}</SessionProvider>;
 }

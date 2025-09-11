@@ -1,14 +1,7 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth-wrapper';
+import { getBotSettings, saveBotSettings, type BotSettings } from '@/lib/file-storage';
 import type { Session } from 'next-auth';
-
-// Simple in-memory storage for bot settings (persists per session, not across server restarts)
-const botSettingsStorage = new Map<string, {
-  joinMinutesBefore: number;
-  autoSchedule: boolean;
-  maxConcurrentBots: number;
-  updatedAt: Date;
-}>();
 
 export async function GET() {
   try {
@@ -20,11 +13,11 @@ export async function GET() {
       );
     }
 
-    const userSettings = botSettingsStorage.get(session.user.email) || {
+    const userSettings = (await getBotSettings(session.user.email)) || {
       joinMinutesBefore: 5,
       autoSchedule: false,
       maxConcurrentBots: 3,
-      updatedAt: new Date(),
+      updatedAt: new Date().toISOString(),
     };
 
     return NextResponse.json({
@@ -33,7 +26,7 @@ export async function GET() {
       metadata: {
         timestamp: new Date().toISOString(),
         requestId: crypto.randomUUID(),
-        note: 'Using in-memory storage',
+        note: 'Using file-based storage',
       },
     });
   } catch (error) {
@@ -86,16 +79,16 @@ export async function POST(request: Request) {
     }
 
     // Store bot settings
-    const settings = {
+    const settings: BotSettings = {
       joinMinutesBefore,
       autoSchedule,
       maxConcurrentBots,
-      updatedAt: new Date(),
+      updatedAt: new Date().toISOString(),
     };
 
-    botSettingsStorage.set(session.user.email, settings);
+    await saveBotSettings(session.user.email, settings);
 
-    console.log(`🤖 Bot settings updated for user: ${session.user.email}`, settings);
+    console.log(`🤖 Bot settings updated for user: ${session.user.email}`);
 
     return NextResponse.json({
       success: true,
@@ -103,7 +96,7 @@ export async function POST(request: Request) {
       metadata: {
         timestamp: new Date().toISOString(),
         requestId: crypto.randomUUID(),
-        note: 'Using in-memory storage',
+        note: 'Using file-based storage',
       },
     });
   } catch (error) {

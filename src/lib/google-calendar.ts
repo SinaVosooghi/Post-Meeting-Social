@@ -6,10 +6,11 @@
  */
 
 import { google, calendar_v3 } from 'googleapis';
-import type { CalendarEvent, GoogleCalendarConfig, GoogleCalendarAttendee } from '@/types';
+import type { CalendarEvent, GoogleCalendarConfig, CalendarAttendee } from '@/types';
 import { CalendarProvider } from '@/types/master-interfaces';
 import { MeetingParticipantRole } from '@/types/master-interfaces';
 import { calendarLogger } from './logger';
+import { toISO } from './date';
 
 // Type guard for Google Calendar events
 function isGoogleCalendarEvent(event: unknown): event is calendar_v3.Schema$Event {
@@ -69,7 +70,11 @@ const GOOGLE_CALENDAR_CONFIG: GoogleCalendarConfig = {
 /**
  * Creates authenticated Google Calendar client
  */
-export function createGoogleCalendarClient(accessToken: string, refreshToken?: string, expiresAt?: number) {
+export function createGoogleCalendarClient(
+  accessToken: string,
+  refreshToken?: string,
+  expiresAt?: number
+) {
   const auth = new google.auth.OAuth2(
     GOOGLE_CALENDAR_CONFIG.clientId,
     GOOGLE_CALENDAR_CONFIG.clientSecret,
@@ -89,6 +94,18 @@ export function createGoogleCalendarClient(accessToken: string, refreshToken?: s
   }
 
   auth.setCredentials(credentials);
+
+  // Enable automatic token refresh
+  auth.on('tokens', tokens => {
+    if (tokens.refresh_token) {
+      // Store the new refresh token
+      console.log('🔄 Google Calendar token refreshed');
+    }
+    if (tokens.access_token) {
+      // Store the new access token
+      console.log('🔄 Google Calendar access token updated');
+    }
+  });
 
   return google.calendar({ version: 'v3', auth });
 }
@@ -112,7 +129,11 @@ export async function getUpcomingEvents(
   } = {}
 ): Promise<CalendarEvent[]> {
   try {
-    const calendar = createGoogleCalendarClient(accessToken, options.refreshToken, options.expiresAt);
+    const calendar = createGoogleCalendarClient(
+      accessToken,
+      options.refreshToken,
+      options.expiresAt
+    );
 
     const { maxResults = 20, timeMin = new Date(), timeMax, calendarId = 'primary' } = options;
 
@@ -222,13 +243,6 @@ export async function getUpcomingEvents(
           : undefined,
         status: event.status as 'confirmed' | 'tentative' | 'cancelled',
         visibility: event.visibility as 'default' | 'public' | 'private',
-        botSettings: {
-          enableBot: true,
-          botJoinMinutesBefore: 5,
-          recordingEnabled: true,
-          transcriptionEnabled: true,
-          autoGenerateContent: true,
-        },
         clientContext: {
           isClientMeeting: false,
           clientIds: [],

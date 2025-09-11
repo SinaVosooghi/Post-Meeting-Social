@@ -1,0 +1,40 @@
+{
+  "f49da937-015d-4575-8f37-4451001a8ac7": {
+    "botId": "f49da937-015d-4575-8f37-4451001a8ac7",
+    "externalBotId": "f49da937-015d-4575-8f37-4451001a8ac7",
+    "eventId": "3mufqi5jhkig1vo5gf134if470",
+    "userId": "lovley.messi@gmail.com",
+    "scheduledAt": "2025-09-09T18:46:29.720Z",
+    "meetingUrl": "https://zoom.us/j/91955756427?pwd=KttHFoRBuRZ6MkmhL3Fr9MWOljS6bO.1\">https://zoom.us/j/91955756427?pwd=KttHFoRBuRZ6MkmhL3Fr9MWOljS6bO.1</a>",
+    "joinMinutesBefore": 12,
+    "recallResponse": {
+      "id": "f49da937-015d-4575-8f37-4451001a8ac7",
+      "meeting_url": "https://zoom.us/j/91955756427?pwd=KttHFoRBuRZ6MkmhL3Fr9MWOljS6bO.1\">https://zoom.us/j/91955756427?pwd=KttHFoRBuRZ6MkmhL3Fr9MWOljS6bO.1</a>",
+      "created_at": "2025-09-09T18:46:29.720Z"
+    },
+    "settingsUsed": {
+      "joinMinutesBefore": 12,
+      "maxConcurrentBots": 5,
+      "autoSchedule": false
+    }
+  },
+  "a359a194-f6de-418c-987b-cd6ff0ade61f": {
+    "botId": "a359a194-f6de-418c-987b-cd6ff0ade61f",
+    "externalBotId": "a359a194-f6de-418c-987b-cd6ff0ade61f",
+    "eventId": "7gof58q7rhogbt6ttg31g3glv8",
+    "userId": "lovley.messi@gmail.com",
+    "scheduledAt": "2025-09-10T14:53:01.637Z",
+    "meetingUrl": "https://us05web.zoom.us/j/83170135016?pwd=2xiUc1wIGRyCbAleCco0IkcACEHCbm.1\">https://us05web.zoom.us/j/83170135016?pwd=2xiUc1wIGRyCbAleCco0IkcACEHCbm.1</a>",
+    "joinMinutesBefore": 2,
+    "recallResponse": {
+      "id": "a359a194-f6de-418c-987b-cd6ff0ade61f",
+      "meeting_url": "https://us05web.zoom.us/j/83170135016?pwd=2xiUc1wIGRyCbAleCco0IkcACEHCbm.1\">https://us05web.zoom.us/j/83170135016?pwd=2xiUc1wIGRyCbAleCco0IkcACEHCbm.1</a>",
+      "created_at": "2025-09-10T14:53:01.637Z"
+    },
+    "settingsUsed": {
+      "joinMinutesBefore": 2,
+      "maxConcurrentBots": 5,
+      "autoSchedule": false
+    }
+  }
+}

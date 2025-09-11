@@ -52,11 +52,31 @@ export type BotID = Branded<ID, 'bot'>;
 export type PostID = Branded<ID, 'post'>;
 
 /**
+ * Helper functions for creating branded types
+ */
+export const createBotID = (id: string): BotID => id as BotID;
+export const createPostID = (id: string): PostID => id as PostID;
+export const createUserID = (id: string): UserID => id as UserID;
+export const createMeetingID = (id: string): MeetingID => id as MeetingID;
+export const createComplianceID = (id: string): ComplianceID => id as ComplianceID;
+
+/**
  * Common type aliases
  */
 export type ISODate = string; // 2025-09-05T19:00:00.000Z
 export type NonEmptyString = string & { __nonEmpty: true };
 export type Json = unknown;
+
+/**
+ * Utility types for better type safety
+ */
+export type Lazy<T> = () => T;
+export type DeepPartial<T> = {
+  [P in keyof T]?: T[P] extends object ? DeepPartial<T[P]> : T[P];
+};
+export type NonNullable<T> = T extends null | undefined ? never : T;
+export type Optional<T, K extends keyof T> = Omit<T, K> & Partial<Pick<T, K>>;
+export type Required<T, K extends keyof T> = T & { [P in K]-?: T[P] };
 
 /**
  * Result pattern for better error handling
@@ -179,14 +199,100 @@ export interface Meeting {
   location?: string;
   meetingUrl?: string;
   platform?: MeetingPlatform;
-  status: 'upcoming' | 'completed' | 'recording';
+  status: 'upcoming' | 'completed' | 'recording' | 'not-recorded';
   botId?: string;
   transcriptUrl?: string;
   recordingUrl?: string;
   duration?: number;
   participantCount?: number;
-  followUpEmail?: string;
-  socialPost?: GeneratedContent;
+  followUpEmail?: FollowUpEmail;
+  socialPost?: {
+    posts: Array<{
+      platform: string;
+      content: string;
+      hashtags: string[];
+      wordCount: number;
+      characterCount: number;
+      estimatedEngagement: string;
+      bestTimeToPost: string;
+    }>;
+    metadata?: {
+      totalPosts: number;
+      platforms: string[];
+      totalWordCount: number;
+      totalHashtags: number;
+      averageEngagement: string;
+      recommendedPostingTime: string;
+    };
+  };
+  botData?: {
+    readonly botId: string;
+    readonly externalBotId: string;
+    readonly status: string;
+    readonly scheduledAt: string;
+    readonly joinMinutesBefore: number;
+    readonly settingsUsed: {
+      readonly joinMinutesBefore: number;
+      readonly maxConcurrentBots: number;
+      readonly autoSchedule: boolean;
+    };
+    readonly recallResponse: {
+      readonly id: string;
+      readonly status: string;
+      readonly meeting_url: string;
+      readonly created_at: string;
+      readonly bot_name?: string;
+      readonly record_audio?: boolean;
+      readonly record_video?: boolean;
+      readonly record_screen?: boolean;
+      readonly transcript_url?: string;
+      readonly recording_url?: string;
+    };
+    readonly BotStatus?: {
+      readonly status: string;
+      readonly hasRecording: boolean;
+      readonly hasTranscript: boolean;
+      readonly hasSummary: boolean;
+      readonly participantCount?: number;
+      readonly transcriptWordCount?: number;
+      readonly recordingUrl?: string;
+      readonly transcriptUrl?: string;
+      readonly summaryUrl?: string;
+      readonly config?: {
+        readonly recordAudio: boolean;
+        readonly recordVideo: boolean;
+        readonly recordScreen: boolean;
+        readonly transcriptionEnabled: boolean;
+        readonly realTimeTranscription: boolean;
+        readonly joinMinutesBefore: number;
+        readonly botName: string;
+        readonly webhookUrl?: string | null;
+      };
+    };
+    readonly transcript?: string | null;
+  } | null;
+  botStatus?: {
+    readonly status: string;
+    readonly hasRecording: boolean;
+    readonly hasTranscript: boolean;
+    readonly hasSummary: boolean;
+    readonly participantCount?: number;
+    readonly transcriptWordCount?: number;
+    readonly recordingUrl?: string;
+    readonly transcriptUrl?: string;
+    readonly summaryUrl?: string;
+    readonly config?: {
+      readonly recordAudio: boolean;
+      readonly recordVideo: boolean;
+      readonly recordScreen: boolean;
+      readonly transcriptionEnabled: boolean;
+      readonly realTimeTranscription: boolean;
+      readonly joinMinutesBefore: number;
+      readonly botName: string;
+      readonly webhookUrl: string | null;
+    };
+  };
+  transcript?: string | null;
 }
 
 /**
@@ -212,11 +318,10 @@ export interface BotSettings {
  * Follow-up email interface
  */
 export interface FollowUpEmail {
-  subject: string;
+  subject?: string;
   content: string;
-  tone: ContentTone;
-  meetingId: string;
-  generatedAt: string;
+  actionItems?: readonly string[];
+  nextSteps?: string;
 }
 
 /**
@@ -309,6 +414,7 @@ export interface RecallBot {
   readonly errors: readonly BotError[];
   readonly createdAt: ISODate;
   readonly updatedAt: ISODate;
+  readonly transcriptURL: string | null; // Add this line
 }
 
 /**
@@ -655,6 +761,36 @@ export interface PublishingAttempt {
 }
 
 /**
+ * Social media settings for user preferences
+ */
+export interface SocialMediaSettings {
+  readonly platform: SocialPlatform;
+  readonly enabled: boolean;
+  readonly autoPublish: boolean;
+  readonly defaultTone: ContentTone;
+  readonly defaultLength: ContentLength;
+  readonly includeHashtags: boolean;
+  readonly includeEmojis: boolean;
+  readonly customPrompt?: string;
+}
+
+/**
+ * Meeting transcript summary for quick reference
+ */
+export interface TranscriptSummary {
+  readonly meetingId: MeetingID;
+  readonly botId: BotID;
+  readonly summary: string;
+  readonly keyPoints: readonly string[];
+  readonly actionItems: readonly string[];
+  readonly duration: number;
+  readonly wordCount: number;
+  readonly speakerCount: number;
+  readonly confidence: number;
+  readonly createdAt: ISODate;
+}
+
+/**
  * Social media platform OAuth token management
  * Maps to: OAuth Flow & Token Management in architecture
  */
@@ -985,7 +1121,7 @@ export interface UserSettings {
 /**
  * Bot and automation settings
  */
-export interface BotSettings {
+export interface BotAutomationSettings {
   readonly defaultJoinMinutesBefore: number;
   readonly autoScheduleBots: boolean;
   readonly enableRecording: boolean;
@@ -1177,6 +1313,15 @@ export interface RecallBotApi {
   readonly duration?: number | null;
   readonly participant_count?: number | null;
   readonly transcript_word_count?: number | null;
+  readonly recordings?: {
+    readonly media_shortcuts?: {
+      readonly transcript?: {
+        readonly data?: {
+          readonly download_url?: string;
+        };
+      };
+    };
+  };
 }
 
 /**
@@ -1740,8 +1885,8 @@ export interface CalendarEvent {
   readonly id: string;
   readonly title: string;
   readonly description: string;
-  readonly startTime: Date;
-  readonly endTime: Date;
+  readonly startTime: ISODate;
+  readonly endTime: ISODate;
   readonly attendees: CalendarAttendee[];
   readonly location: string;
   readonly meetingUrl: string;
@@ -1750,10 +1895,45 @@ export interface CalendarEvent {
   readonly isRecurring: boolean;
   readonly status: 'confirmed' | 'tentative' | 'cancelled';
   readonly visibility: 'default' | 'public' | 'private';
-  readonly createdAt: Date;
-  readonly updatedAt: Date;
+  readonly createdAt: ISODate;
+  readonly updatedAt: ISODate;
   readonly botScheduled?: boolean;
   readonly botId?: string;
+  readonly botData?: {
+    readonly botId: string;
+    readonly externalBotId: string;
+    readonly status: string;
+    readonly scheduledAt: string;
+    readonly joinMinutesBefore: number;
+    readonly settingsUsed: {
+      readonly joinMinutesBefore: number;
+      readonly maxConcurrentBots: number;
+      readonly autoSchedule: boolean;
+    };
+    readonly recallResponse: {
+      readonly id: string;
+      readonly status: string;
+      readonly meeting_url: string;
+      readonly created_at: string;
+      readonly bot_name?: string;
+      readonly record_audio?: boolean;
+      readonly record_video?: boolean;
+      readonly record_screen?: boolean;
+      readonly transcript_url?: string;
+      readonly recording_url?: string;
+    };
+  };
+  readonly botStatus?: {
+    readonly status: string;
+    readonly hasRecording: boolean;
+    readonly hasTranscript: boolean;
+    readonly hasSummary: boolean;
+    readonly participantCount?: number;
+    readonly transcriptWordCount?: number;
+    readonly recordingUrl?: string;
+    readonly transcriptUrl?: string;
+    readonly summaryUrl?: string;
+  };
 }
 
 /**

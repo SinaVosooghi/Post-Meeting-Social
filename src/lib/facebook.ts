@@ -321,9 +321,10 @@ export async function getFacebookPostAnalytics(
 
     return {
       likes: reactionsData?.values?.[0]?.value?.like || 0,
-      shares: engagementData?.values?.[0]?.value || 0,
+      shares: typeof engagementData?.values?.[0]?.value === 'number' 
+        ? engagementData.values[0].value 
+        : (engagementData?.values?.[0]?.value?.share || 0),
       comments: 0, // Facebook doesn't provide comment count in basic insights
-      views: impressionsData?.values?.[0]?.value || 0,
       clicks: 0, // Facebook doesn't provide click count in basic insights
     };
   } catch (error) {
@@ -332,7 +333,6 @@ export async function getFacebookPostAnalytics(
       likes: 0,
       shares: 0,
       comments: 0,
-      views: 0,
       clicks: 0,
     };
   }
@@ -546,7 +546,6 @@ export async function createMockFacebookPost(
       likes: Math.floor(Math.random() * 100),
       shares: Math.floor(Math.random() * 50),
       comments: Math.floor(Math.random() * 25),
-      views: Math.floor(Math.random() * 1000),
       clicks: Math.floor(Math.random() * 100),
     },
   };

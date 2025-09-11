@@ -7,31 +7,32 @@ import { generateFollowUpEmail, generateMockFollowUpEmail } from '@/lib/openai';
 export async function POST(request: NextRequest) {
   try {
     const session = (await auth()) as Session | null;
-    
+
     if (!session) {
-      return NextResponse.json({
-        success: false,
-        message: 'Authentication required. Please sign in first.',
-        signedIn: false
-      }, { status: 401 });
+      return NextResponse.json(
+        {
+          success: false,
+          message: 'Authentication required. Please sign in first.',
+          signedIn: false,
+        },
+        { status: 401 }
+      );
     }
 
     const body = await request.json();
     const { transcript, meetingContext, emailSettings } = body;
 
-    console.log('Generating follow-up email...', {
-      transcriptLength: transcript?.length,
-      meetingTitle: meetingContext?.title,
-      settings: emailSettings,
-      fullBody: body
-    });
+    console.log('Generating follow-up email...');
 
     // Validate required fields
     if (!transcript) {
-      return NextResponse.json({
-        success: false,
-        error: 'Transcript is required'
-      }, { status: 400 });
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Transcript is required',
+        },
+        { status: 400 }
+      );
     }
 
     // Use provided meetingContext or create default
@@ -39,7 +40,7 @@ export async function POST(request: NextRequest) {
       title: 'Meeting Discussion',
       attendees: ['Meeting Participants'],
       duration: 30,
-      platform: 'zoom'
+      platform: 'zoom',
     };
 
     // Generate follow-up email using OpenAI with fallback
@@ -57,7 +58,7 @@ export async function POST(request: NextRequest) {
       processingTimeMs = Date.now() - startTime;
     } catch (error) {
       console.warn('OpenAI email generation failed, using mock data:', error);
-      
+
       if (error instanceof Error && error.message.includes('429')) {
         console.log('OpenAI quota exceeded, using mock email data');
         email = await generateMockFollowUpEmail(
@@ -79,7 +80,7 @@ export async function POST(request: NextRequest) {
       to: 'client@example.com',
       cc: '',
       bcc: '',
-      priority: 'normal'
+      priority: 'normal',
     };
 
     return NextResponse.json({
@@ -89,7 +90,7 @@ export async function POST(request: NextRequest) {
         subject: email.subject,
         content: email.content,
         actionItems: email.actionItems || [],
-        nextSteps: email.nextSteps || ''
+        nextSteps: email.nextSteps || '',
       },
       metadata: {
         processingTimeMs,
@@ -99,20 +100,23 @@ export async function POST(request: NextRequest) {
         characterCount: email.content.length,
         tone: emailSettings?.tone || 'professional',
         includesActionItems: email.actionItems && email.actionItems.length > 0,
-        includesMeetingSummary: email.content.includes('meeting') || email.content.includes('discussion'),
+        includesMeetingSummary:
+          email.content.includes('meeting') || email.content.includes('discussion'),
         usingMockData,
-        note: usingMockData ? 'Using mock data due to OpenAI quota exceeded' : undefined
+        note: usingMockData ? 'Using mock data due to OpenAI quota exceeded' : undefined,
       },
       meetingContext: context,
-      generatedAt: new Date().toISOString()
+      generatedAt: new Date().toISOString(),
     });
-
   } catch (error) {
     console.error('Generate email error:', error);
-    return NextResponse.json({
-      success: false,
-      error: 'Failed to generate follow-up email',
-      details: error instanceof Error ? error.message : 'Unknown error'
-    }, { status: 500 });
+    return NextResponse.json(
+      {
+        success: false,
+        error: 'Failed to generate follow-up email',
+        details: error instanceof Error ? error.message : 'Unknown error',
+      },
+      { status: 500 }
+    );
   }
 }

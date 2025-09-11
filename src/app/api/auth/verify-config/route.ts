@@ -23,7 +23,7 @@ export async function GET() {
     authLogger.info('LinkedIn OAuth configuration verified successfully');
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error occurred';
-    authLogger.error('LinkedIn OAuth configuration error:', error);
+    authLogger.error('LinkedIn OAuth configuration error:', error instanceof Error ? error : new Error(message));
     config.error = message;
   }
 

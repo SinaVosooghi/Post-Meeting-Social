@@ -58,7 +58,7 @@ export async function storeSocialToken(
 
     socialLogger.info(`Stored ${platform} token for user ${userId}`);
   } catch (error) {
-    socialLogger.error(`Failed to store ${platform} token for user ${userId}:`, error);
+    socialLogger.error(`Failed to store ${platform} token for user ${userId}:`, error as Error | undefined);
     throw new Error(`Failed to store ${platform} token`);
   }
 }
@@ -122,7 +122,7 @@ export async function refreshSocialToken(
     // In real implementation, this would call the platform's refresh endpoint
     return tokenData.accessToken;
   } catch (error) {
-    socialLogger.error(`Failed to refresh ${platform} token for user ${userId}:`, error);
+    socialLogger.error(`Failed to refresh ${platform} token for user ${userId}:`, error as Error | undefined);
     return null;
   }
 }
@@ -151,7 +151,7 @@ export async function hasValidToken(
 
     return true;
   } catch (error) {
-    socialLogger.error(`Failed to check token validity for ${platform} user ${userId}:`, error);
+    socialLogger.error(`Failed to check token validity for ${platform} user ${userId}:`, error as Error | undefined);
     return false;
   }
 }
@@ -170,7 +170,7 @@ export async function deleteSocialToken(
 
     socialLogger.info(`Deleted ${platform} ${tokenType || 'all'} token(s) for user ${userId}`);
   } catch (error) {
-    socialLogger.error(`Failed to delete ${platform} token for user ${userId}:`, error);
+    socialLogger.error(`Failed to delete ${platform} token for user ${userId}:`, error as Error | undefined);
     throw new Error(`Failed to delete ${platform} token`);
   }
 }

@@ -3,14 +3,17 @@ import { auth } from '@/lib/auth-wrapper';
 import type { Session } from 'next-auth';
 
 // Simple in-memory storage for social connections (persists per session, not across server restarts)
-const socialConnectionsStorage = new Map<string, {
-  platform: string;
-  connected: boolean;
-  username?: string;
-  lastSync?: string;
-  accessToken?: string;
-  refreshToken?: string;
-}[]>();
+const socialConnectionsStorage = new Map<
+  string,
+  {
+    platform: string;
+    connected: boolean;
+    username?: string;
+    lastSync?: string;
+    accessToken?: string;
+    refreshToken?: string;
+  }[]
+>();
 
 export async function GET() {
   try {
@@ -96,7 +99,7 @@ export async function POST(request: Request) {
     // Store updated connections
     socialConnectionsStorage.set(session.user.email, updatedConnections);
 
-    console.log(`🔗 Social connection updated for user: ${session.user.email}`, { platform, connected });
+    console.log(`🔗 Social connection updated for user: ${session.user.email}`);
 
     return NextResponse.json({
       success: true,
