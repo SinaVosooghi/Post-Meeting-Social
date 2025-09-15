@@ -104,13 +104,12 @@ export default function CalendarPage() {
             return event.startTime && new Date(event.startTime) > now;
           })
           .map(event => ({
-          ...event,
+            ...event,
             meetingUrl: extractMeetingUrl(event) || event.meetingUrl,
             // botData is already included from the API
-        }));
+          }));
 
         setEvents(processedEvents);
-
       } else {
         setError(eventsResult.error?.message || 'Failed to fetch calendar events');
       }
@@ -157,6 +156,7 @@ export default function CalendarPage() {
           eventId,
           meetingUrl,
           joinMinutesBefore: botSettings.joinMinutesBefore, // Use user's setting
+          eventTime: event.startTime || null,
         }),
       });
 
@@ -196,13 +196,8 @@ export default function CalendarPage() {
 
         // Update the event to show bot is scheduled with full botData
         setEvents(prev =>
-          prev.map(event =>
-            event.id === eventId
-              ? { ...event, botData }
-              : event
-          )
+          prev.map(event => (event.id === eventId ? { ...event, botData } : event))
         );
-
 
         // Show success message
         setError(null);
@@ -219,7 +214,6 @@ export default function CalendarPage() {
     void fetchCalendarEvents();
     void loadBotSettings();
   }, [fetchCalendarEvents]);
-
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
@@ -323,15 +317,17 @@ export default function CalendarPage() {
                         <div className="text-gray-400">
                           Scheduled: {new Date(event.botData.scheduledAt).toLocaleString()}
                         </div>
-                        
+
                         {/* Show bot settings used */}
                         <div className="mt-2 p-2 bg-gray-50 rounded text-xs">
                           <div className="font-medium text-gray-700">Settings Used:</div>
                           <div>Join Time: {event.botData.settingsUsed.joinMinutesBefore} min</div>
                           <div>Max Bots: {event.botData.settingsUsed.maxConcurrentBots}</div>
-                          <div>Auto Schedule: {event.botData.settingsUsed.autoSchedule ? 'Yes' : 'No'}</div>
+                          <div>
+                            Auto Schedule: {event.botData.settingsUsed.autoSchedule ? 'Yes' : 'No'}
+                          </div>
                         </div>
-                        
+
                         {/* Bot scheduled for upcoming meeting */}
                         <div className="mt-2 p-2 bg-green-50 rounded text-xs">
                           <div className="font-medium text-green-800">Bot Scheduled</div>
@@ -342,9 +338,15 @@ export default function CalendarPage() {
                         <div className="mt-2 p-2 bg-green-50 rounded text-xs">
                           <div className="font-medium text-green-800">Recall.ai Details:</div>
                           <div>Bot Name: {event.botData.recallResponse.bot_name || 'N/A'}</div>
-                          <div>Audio: {event.botData.recallResponse.record_audio ? 'Yes' : 'No'}</div>
-                          <div>Video: {event.botData.recallResponse.record_video ? 'Yes' : 'No'}</div>
-                          <div>Screen: {event.botData.recallResponse.record_screen ? 'Yes' : 'No'}</div>
+                          <div>
+                            Audio: {event.botData.recallResponse.record_audio ? 'Yes' : 'No'}
+                          </div>
+                          <div>
+                            Video: {event.botData.recallResponse.record_video ? 'Yes' : 'No'}
+                          </div>
+                          <div>
+                            Screen: {event.botData.recallResponse.record_screen ? 'Yes' : 'No'}
+                          </div>
                         </div>
                       </div>
                     )}
@@ -398,21 +400,39 @@ export default function CalendarPage() {
               <div className="bg-gray-50 p-4 rounded-lg mb-4">
                 <h3 className="font-semibold mb-2">Bot Details:</h3>
                 <div className="grid grid-cols-2 gap-4 text-sm">
-                  <div><strong>Bot ID:</strong> {recallResponse.id}</div>
-                  <div><strong>Status:</strong> {recallResponse.status}</div>
-                  <div><strong>Bot Name:</strong> {recallResponse.bot_name || 'N/A'}</div>
-                  <div><strong>Created At:</strong> {recallResponse.created_at}</div>
-                  <div><strong>Meeting URL:</strong> {recallResponse.meeting_url}</div>
-                  <div><strong>Webhook URL:</strong> {recallResponse.webhook_url || 'N/A'}</div>
+                  <div>
+                    <strong>Bot ID:</strong> {recallResponse.id}
+                  </div>
+                  <div>
+                    <strong>Status:</strong> {recallResponse.status}
+                  </div>
+                  <div>
+                    <strong>Bot Name:</strong> {recallResponse.bot_name || 'N/A'}
+                  </div>
+                  <div>
+                    <strong>Created At:</strong> {recallResponse.created_at}
+                  </div>
+                  <div>
+                    <strong>Meeting URL:</strong> {recallResponse.meeting_url}
+                  </div>
+                  <div>
+                    <strong>Webhook URL:</strong> {recallResponse.webhook_url || 'N/A'}
+                  </div>
                 </div>
               </div>
 
               <div className="bg-gray-50 p-4 rounded-lg mb-4">
                 <h3 className="font-semibold mb-2">Recording Settings:</h3>
                 <div className="grid grid-cols-2 gap-4 text-sm">
-                  <div><strong>Record Audio:</strong> {recallResponse.record_audio ? 'Yes' : 'No'}</div>
-                  <div><strong>Record Video:</strong> {recallResponse.record_video ? 'Yes' : 'No'}</div>
-                  <div><strong>Record Screen:</strong> {recallResponse.record_screen ? 'Yes' : 'No'}</div>
+                  <div>
+                    <strong>Record Audio:</strong> {recallResponse.record_audio ? 'Yes' : 'No'}
+                  </div>
+                  <div>
+                    <strong>Record Video:</strong> {recallResponse.record_video ? 'Yes' : 'No'}
+                  </div>
+                  <div>
+                    <strong>Record Screen:</strong> {recallResponse.record_screen ? 'Yes' : 'No'}
+                  </div>
                 </div>
               </div>
 
@@ -424,10 +444,7 @@ export default function CalendarPage() {
               </div>
 
               <div className="flex gap-3">
-                <Button
-                  onClick={() => setShowRecallResponse(false)}
-                  variant="outline"
-                >
+                <Button onClick={() => setShowRecallResponse(false)} variant="outline">
                   Close
                 </Button>
                 <Button

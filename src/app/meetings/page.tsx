@@ -1067,42 +1067,62 @@ export default function MeetingsPage() {
                       </div>
                     )}
 
-                    {/* Transcript Section */}
-                    {selectedMeeting.status === 'completed' && (
-                      <div className="mt-6">
-                        <h3 className="text-lg font-semibold mb-2">Meeting Transcript</h3>
-                        <div className="bg-gray-50 p-4 rounded-lg">
-                          <p className="text-sm text-gray-600 mb-2">
-                            {selectedMeeting.transcriptUrl ? (
-                              <a
-                                href={selectedMeeting.transcriptUrl}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="text-blue-600 hover:underline"
+                    {/* Transcript Section - Scrollable 5-line preview for long transcripts */}
+                    <div className="mt-6">
+                      <h3 className="text-lg font-semibold mb-2 flex items-center gap-2">
+                        <span>📝</span>
+                        Meeting Transcript
+                      </h3>
+                      <div className="bg-gray-50 p-4 rounded-lg">
+                        <p className="text-sm text-gray-600 mb-2">
+                          {selectedMeeting.transcript ? (
+                            <a
+                              href={selectedMeeting.transcriptUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-blue-600 hover:underline"
+                            >
+                              View full transcript →
+                            </a>
+                          ) : (
+                            'Transcript will be available after the meeting is processed.'
+                          )}
+                        </p>
+
+                        {/* Scrollable transcript preview - exactly 5 lines, scrollable for long content */}
+                        <div className="bg-white rounded border">
+                          {selectedMeeting.transcript ? (
+                            <div className="relative">
+                              {/* 5-line scrollable container */}
+                              <div
+                                className="p-3 text-sm text-gray-700 leading-relaxed overflow-y-auto"
+                                style={{
+                                  height: '7.5rem', // Exactly 5 lines (5 * 1.5 line-height)
+                                  lineHeight: '1.5',
+                                }}
                               >
-                                View full transcript →
-                              </a>
-                            ) : (
-                              'Transcript will be available after the meeting is processed.'
-                            )}
-                          </p>
-                          <div className="bg-white p-3 rounded border text-sm max-h-64 overflow-y-auto">
-                            {selectedMeeting.transcript ? (
-                              <p className="text-gray-700 leading-relaxed">
                                 {selectedMeeting.transcript}
+                              </div>
+
+                              {/* Transcript stats */}
+                              <div className="px-3 py-2 bg-gray-50 border-t text-xs text-gray-500 flex items-center justify-between">
+                                <span>
+                                  {selectedMeeting.transcript.split('\n').length} lines •{' '}
+                                  {selectedMeeting.transcript.length} characters
+                                </span>
+                                <span>Scroll to read more</span>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="p-3">
+                              <p className="text-gray-500 italic text-sm">
+                                Transcript will be available after the meeting is processed.
                               </p>
-                            ) : (
-                              <p className="text-gray-500 italic">
-                                "Talking with clients about staying calm in choppy markets is one of
-                                the most rewarding parts of my job. Today we reviewed a retirement
-                                plan and shifted to a 60-40 mix so the portfolio matches long-term
-                                goals and comfort with risk..."
-                              </p>
-                            )}
-                          </div>
+                            </div>
+                          )}
                         </div>
                       </div>
-                    )}
+                    </div>
 
                     {/* Follow-up Email Section */}
                     <div className="mt-6">

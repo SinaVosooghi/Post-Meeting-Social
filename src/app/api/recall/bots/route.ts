@@ -28,8 +28,9 @@ export async function POST(request: Request) {
       eventId: string;
       joinMinutesBefore?: number;
       meetingUrl?: string;
+      eventTime?: string | null;
     };
-    const { eventId, meetingUrl } = body;
+    const { eventId, meetingUrl, eventTime } = body;
 
     if (!meetingUrl) {
       return NextResponse.json(
@@ -43,7 +44,8 @@ export async function POST(request: Request) {
       session.user.email,
       eventId,
       meetingUrl,
-      body.joinMinutesBefore
+      body.joinMinutesBefore,
+      eventTime
     );
 
     if (!result.success) {

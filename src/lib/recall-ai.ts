@@ -23,12 +23,17 @@ const RECALL_API_CONFIG = {
     record_audio: true,
     record_video: false,
     record_screen: false,
-    transcription: {
-      provider: 'assembly_ai',
-      language: 'en',
-      detect_language: true,
-      format_text: true,
-      include_speaker_labels: true,
+    recording_config: {
+      transcript: {
+        provider: {
+          assembly_ai_streaming: {
+            language: 'en',
+            detect_language: true,
+            format_text: true,
+            include_speaker_labels: true,
+          },
+        },
+      },
     },
     // webhook_url: process.env.NEXTAUTH_URL + '/api/webhooks/recall', // Disabled - localhost URLs blocked by Recall.ai WAF
   },
@@ -90,10 +95,7 @@ export async function scheduleMeetingBot(
       ...RECALL_API_CONFIG.defaultConfig,
       meeting_url: meetingUrl,
       bot_name: config.botName ?? 'Post-Meeting Content Bot',
-      recording_config: {
-        transcription: true,
-      },
-      ...config,
+      join_at: getJoinTimeISO(config.joinMinutesBefore || 1, config.eventTime),
     };
 
     // 2. Call Recall.ai API to create bot
@@ -156,7 +158,8 @@ export async function scheduleBotWithUserSettings(
   userId: string,
   eventId: string,
   meetingUrl: string,
-  joinMinutesBefore?: number
+  joinMinutesBefore?: number,
+  eventTime?: string | null
 ): Promise<{
   success: boolean;
   data?: any;
@@ -192,6 +195,7 @@ export async function scheduleBotWithUserSettings(
     const recallBot = await scheduleMeetingBot(meetingUrl, {
       joinMinutesBefore: finalJoinMinutesBefore,
       botName: 'Post-Meeting Content Bot',
+      eventTime: eventTime,
     });
 
     // 4. Store bot schedule locally
@@ -568,4 +572,18 @@ function detectMeetingPlatform(meetingUrl: string | null | undefined): MeetingPl
   }
 
   return MeetingPlatformType.OTHER;
+}
+
+function getJoinTimeISO(joinMinutesBefore: number, eventTime: string | null | undefined): string {
+  if (!eventTime) {
+    throw new Error('No event time passed.');
+  }
+  const eventDate = new Date(eventTime);
+
+  if (isNaN(eventDate.getTime())) {
+    throw new Error('Invalid eventTime format. Must be a valid ISO string.');
+  }
+
+  const joinDate = new Date(eventDate.getTime() - joinMinutesBefore * 60 * 1000);
+  return joinDate.toISOString();
 }

@@ -60,10 +60,10 @@ export async function saveBotSchedule(botId: string, schedule: BotSchedule): Pro
   try {
     // Get existing schedules
     const allSchedules = await getBotSchedules();
-    
+
     // Update with new schedule
     allSchedules[botId] = schedule;
-    
+
     // Save back to KV
     await kv.set('bot-schedules:all', allSchedules);
     console.log(`Bot schedule saved to KV for ${botId}`);

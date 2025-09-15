@@ -431,6 +431,7 @@ export interface BotConfiguration {
   readonly joinMinutesBefore: number;
   readonly autoLeaveAfterMinutes?: number;
   readonly customInstructions?: string;
+  readonly eventTime?: string | null;
 }
 
 /**
